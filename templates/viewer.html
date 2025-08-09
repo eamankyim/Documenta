@@ -350,9 +350,11 @@
                             if (!text) return;
                             if (!el.id) {
                                 let base = slugify(text);
+                                // Ensure ID doesn't start with a digit (problematic for CSS selectors)
+                                if (/^[0-9]/.test(base)) base = `s-${base}`;
                                 let id = base || `section-${index+1}`;
                                 let counter = 2;
-                                while (scope.querySelector(`#${id}`)) { id = `${base}-${counter++}`; }
+                                while (document.getElementById(id)) { id = `${base}-${counter++}`; }
                                 el.id = id;
                             }
                             tocItems.push({ href: `#${el.id}`, text, index });
@@ -372,11 +374,12 @@
                         tocList.querySelectorAll('.toc-link').forEach(link => {
                             link.addEventListener('click', (e) => {
                                 e.preventDefault();
-                                const selector = link.getAttribute('data-target');
-                                const target = documentContent.querySelector(selector) || document.getElementById(selector.replace('#',''));
+                                const selector = link.getAttribute('data-target') || '';
+                                const id = selector.startsWith('#') ? selector.slice(1) : selector;
+                                const target = document.getElementById(id);
                                 if (target) {
                                     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                    try { history.replaceState(null, '', selector); } catch (_) {}
+                                    try { history.replaceState(null, '', `#${id}`); } catch (_) {}
                                 }
                             });
                         });
