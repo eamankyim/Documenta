@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iDOC — iCreations Documentation Tool</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 900px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            color: #7f8c8d;
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+        }
+
+        .upload-area {
+            border: 3px dashed #bdc3c7;
+            border-radius: 15px;
+            padding: 60px 20px;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #bdc3c7;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress {
+            width: 100%;
+            height: 8px;
+            background: #ecf0f1;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .action-buttons {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .open-existing {
+            margin-top: 30px;
+            text-align: left;
+        }
+        .open-existing h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .doc-list {
+            max-height: 220px;
+            overflow: auto;
+            border: 1px solid #ecf0f1;
+            border-radius: 10px;
+            padding: 10px;
+            background: #fafafa;
+        }
+        .doc-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        .doc-item:last-child { border-bottom: none; }
+        .doc-meta { color: #7f8c8d; font-size: 0.85rem; }
+        .doc-actions a { margin-left: 8px; }
+
+        .action-btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(39, 174, 96, 0.3);
+        }
+
+        .action-btn.secondary {
+            background: #3498db;
+        }
+
+        .action-btn.secondary:hover {
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        /* Projects grid */
+        .projects { margin-top: 30px; text-align: left; }
+        .project-grid { margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+        .project-card { background: #f8f9ff; border: 1px solid #ecf0f1; border-radius: 14px; text-align: left; overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease; cursor: pointer; }
+        .project-card:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.08); }
+        .project-thumb { height: 120px; background: linear-gradient(135deg, #f2f5ff, #e9ecff); display: flex; align-items: center; justify-content: center; color: #667eea; font-size: 2rem; }
+        .project-body { padding: 12px 14px; }
+        .project-title { font-weight: 600; color: #2c3e50; margin-bottom: 6px; }
+        .project-meta { color: #7f8c8d; font-size: 0.85rem; }
+        .project-actions { display: none; }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .upload-area {
+                padding: 40px 20px;
+            }
+
+            .upload-icon {
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo"><i class="fas fa-file-alt"></i></div>
+        <h1>iDOC</h1>
+        <p class="subtitle">iCreations Documentation Tool</p>
+
+        <div>
+            <a class="btn" href="/new" title="Create new project">
+                <i class="fas fa-plus-circle"></i> Create New Project
+            </a>
+        </div>
+
+        <div class="progress" id="progress">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+
+        <div class="status" id="status"></div>
+
+        <div class="action-buttons" id="action-buttons">
+            <a href="#" class="action-btn" id="view-btn">
+                <i class="fas fa-eye"></i> View
+            </a>
+            <a href="#" class="action-btn secondary" id="edit-btn">
+                <i class="fas fa-edit"></i> Edit
+            </a>
+            <a href="#" class="action-btn secondary" id="download-btn">
+                <i class="fas fa-download"></i> Download
+            </a>
+        </div>
+
+        <div class="projects">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+                <h3 style="color:#2c3e50;"><i class="fas fa-history"></i> Recent Projects</h3>
+            </div>
+            <div id="project-grid" class="project-grid"></div>
+        </div>
+    </div>
+
+    <script>
+        const progress = document.getElementById('progress');
+        const progressBar = document.getElementById('progress-bar');
+        const status = document.getElementById('status');
+        const projectGrid = document.getElementById('project-grid');
+
+        let selectedFile = null;
+        let uniqueId = null;
+
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+
+        function showActionButtons() {
+            actionButtons.style.display = 'block';
+            viewBtn.href = `/view/${uniqueId}`;
+            editBtn.href = `/edit/${uniqueId}`;
+            downloadBtn.href = `/download/${uniqueId}`;
+        }
+
+        // Load recent projects
+        async function loadExistingDocuments() {
+            try {
+                const res = await fetch('/api/list_outputs');
+                const data = await res.json();
+                const docs = data.documents || [];
+                if (!docs.length) {
+                    projectGrid.innerHTML = '<div class="project-meta">No projects yet. Click "Create New Project" to start.</div>';
+                    return;
+                }
+                projectGrid.innerHTML = docs.map(d => `
+                    <div class="project-card" onclick="window.location.href='/edit/${d.unique_id}'" tabindex="0" role="button" aria-label="Open ${ (d.title || d.filename).replace(/"/g,'&quot;') }">
+                        <div class="project-thumb"><i class="fas fa-file-alt"></i></div>
+                        <div class="project-body">
+                            <div class="project-title">${(d.title || d.filename).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+                            <div class="project-meta">${d.modified ? new Date(d.modified).toLocaleString() : ''} • ${d.size ? (d.size/1024).toFixed(1) + ' KB' : ''}</div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                projectGrid.innerHTML = '<div class="project-meta">Failed to load projects</div>';
+            }
+        }
+
+        // Init existing docs on load
+        loadExistingDocuments();
+    </script>
+</body>
+</html> 
