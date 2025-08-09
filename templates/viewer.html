@@ -139,6 +139,16 @@
             min-height: 800px;
         }
 
+        /* Ensure anchored headings do not hide beneath the sticky header */
+        .content-area h1,
+        .content-area h2,
+        .content-area h3,
+        .content-area h4,
+        .content-area h5,
+        .content-area h6 {
+            scroll-margin-top: 100px; /* approx sticky header height + spacing */
+        }
+
         .loading {
             display: flex;
             justify-content: center;
@@ -378,7 +388,10 @@
                                 const id = selector.startsWith('#') ? selector.slice(1) : selector;
                                 const target = document.getElementById(id);
                                 if (target) {
-                                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    const header = document.querySelector('.header');
+                                    const headerH = header ? header.offsetHeight : 0;
+                                    const y = window.scrollY + target.getBoundingClientRect().top - headerH - 10;
+                                    window.scrollTo({ top: y, behavior: 'smooth' });
                                     try { history.replaceState(null, '', `#${id}`); } catch (_) {}
                                 }
                             });
@@ -389,6 +402,18 @@
                         console.warn('TOC build error', err);
                     }
                 })();
+
+                // If URL already has a hash, scroll to it with offset once content is ready
+                if (location.hash) {
+                    const id = location.hash.slice(1);
+                    const target = document.getElementById(id);
+                    if (target) {
+                        const header = document.querySelector('.header');
+                        const headerH = header ? header.offsetHeight : 0;
+                        const y = window.scrollY + target.getBoundingClientRect().top - headerH - 10;
+                        window.scrollTo({ top: y });
+                    }
+                }
 
             } catch (error) {
                 contentLoading.innerHTML = `
