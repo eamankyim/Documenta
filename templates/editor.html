@@ -950,116 +950,11 @@
         });
 
         // Font controls
-        // Track selected image inside editor
-        let selectedImageEl = null;
-        editor.addEventListener('click', (e) => {
-            const target = e.target;
-            if (target && target.tagName === 'IMG') {
-                selectedImageEl = target;
-                convertToFlowchartBtn.removeAttribute('disabled');
-            } else {
-                selectedImageEl = null;
-                convertToFlowchartBtn.setAttribute('disabled', 'true');
-            }
-        });
 
-        // Convert selected image into a flowchart canvas with the image as background
-        function convertSelectedImageToFlowchart() {
-            if (!selectedImageEl) {
-                showStatus('Select an image first', 'error');
-                return;
-            }
-            const img = selectedImageEl;
-            const rect = img.getBoundingClientRect();
-            const displayWidth = Math.max(300, Math.floor(rect.width));
-            const displayHeight = Math.max(300, Math.floor(rect.height));
-            const src = img.getAttribute('src');
-            const fid = `flowchart-${Date.now()}`;
-
-            const flowchartHTML = `
-                <div class="flowchart-container" id="${fid}" contenteditable="false" style="min-height:${displayHeight}px;">
-                    <div class="flowchart-toolbar" id="flowchart-toolbar">
-                        <div class="flowchart-toolbar-group">
-                            <button class="flowchart-toolbar-btn" data-action="connect">
-                                <i class="fas fa-link"></i> Connect
-                            </button>
-                            <button class="flowchart-toolbar-btn" data-action="disconnect">
-                                <i class="fas fa-unlink"></i> Disconnect
-                            </button>
-                            <button class="flowchart-toolbar-btn" data-action="clear">
-                                <i class="fas fa-trash"></i> Clear All
-                            </button>
-                        </div>
-                        <div class="flowchart-toolbar-group">
-                            <button class="flowchart-toolbar-btn" data-action="add-rectangle">
-                                <i class="fas fa-square"></i> Rectangle
-                            </button>
-                            <button class="flowchart-toolbar-btn" data-action="add-diamond">
-                                <i class="fas fa-gem"></i> Diamond
-                            </button>
-                            <button class="flowchart-toolbar-btn" data-action="add-circle">
-                                <i class="fas fa-circle"></i> Circle
-                            </button>
-                        </div>
-                        <div class="flowchart-toolbar-group">
-                            <button class="flowchart-toolbar-btn" data-action="increase-height" title="Increase height">
-                                <i class="fas fa-up-down"></i> Taller
-                            </button>
-                            <button class="flowchart-toolbar-btn" data-action="decrease-height" title="Decrease height">
-                                <i class="fas fa-compress-alt"></i> Shorter
-                            </button>
-                            <button class="flowchart-toolbar-btn" data-action="increase-width" title="Increase width">
-                                <i class="fas fa-arrows-left-right"></i> Wider
-                            </button>
-                            <button class="flowchart-toolbar-btn" data-action="decrease-width" title="Decrease width">
-                                <i class="fas fa-compress"></i> Narrower
-                            </button>
-                        </div>
-                    </div>
-                    <div class="flowchart-canvas" style="background: url('${src}') center / contain no-repeat, #f8f9fa; min-height:${displayHeight-60}px;">
-                        <svg class="flowchart-svg" width="100%" height="100%" style="position: absolute; top: 0; left: 0; pointer-events: none;">
-                            <defs></defs>
-                        </svg>
-                        <div class="flowchart-hint" style="padding: 20px; text-align: center; color: #6c757d;">
-                            <i class="fas fa-plus" style="font-size: 2rem; margin-bottom: 10px;"></i>
-                            <p>Trace the chart: add shapes and connect them over the background</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            // Replace the image with the flowchart container
-            img.insertAdjacentHTML('afterend', flowchartHTML);
-            const container = document.getElementById(fid);
-            img.remove();
-            selectedImageEl = null;
-            convertToFlowchartBtn.setAttribute('disabled', 'true');
-
-            if (container) initializeFlowchartFor(container);
-            showStatus('Flowchart canvas created from image. Add shapes to trace it.', 'success');
-        }
+        // Removed: convertSelectedImageToFlowchart
 
         // Heuristic detection: scan images and suggest conversion for likely flowcharts
-        async function detectFlowchartImages() {
-            const images = Array.from(editor.querySelectorAll('img'));
-            if (!images.length) {
-                showStatus('No images found in the document', 'info');
-                return;
-            }
-            let found = 0;
-            for (const img of images) {
-                try {
-                    const likely = await isLikelyFlowchart(img);
-                    if (likely) {
-                        markFlowchartCandidate(img);
-                        found++;
-                    }
-                } catch (e) {
-                    // Cross-origin images may not be analyzable; skip silently
-                }
-            }
-            showStatus(found ? `Found ${found} possible flowchart image(s)` : 'No likely flowcharts detected', found ? 'success' : 'info');
-        }
+        // Removed: detectFlowchartImages
 
         function markFlowchartCandidate(img) {
             // Wrap image if not already wrapped
