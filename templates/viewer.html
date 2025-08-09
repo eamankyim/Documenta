@@ -215,7 +215,7 @@
                 <a href="/" class="btn secondary">
                     <i class="fas fa-home"></i> Home
                 </a>
-                <a href="/edit/{{ unique_id }}" class="btn">
+                <a href="/edit/{{ unique_id }}" class="btn" id="editBtnViewer">
                     <i class="fas fa-edit"></i> Edit Document
                 </a>
                 <div class="btn secondary" id="optionsBtn">
@@ -279,7 +279,7 @@
             });
             document.getElementById('shareLink').addEventListener('click', async (e) => {
                 e.preventDefault();
-                const url = window.location.origin + '/view/{{ unique_id }}';
+                const url = window.location.origin + '/view/{{ unique_id }}?share=1';
                 try {
                     await navigator.clipboard.writeText(url);
                     alert('View link copied to clipboard');
@@ -298,6 +298,11 @@
         })();
 
         const uniqueId = '{{ unique_id }}';
+        const isShared = new URLSearchParams(location.search).get('share') === '1';
+        if (isShared) {
+            const eb = document.getElementById('editBtnViewer');
+            if (eb) eb.style.display = 'none';
+        }
         const tocList = document.getElementById('toc-list');
         const contentLoading = document.getElementById('content-loading');
         const documentContent = document.getElementById('document-content');
