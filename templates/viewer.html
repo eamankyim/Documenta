@@ -329,7 +329,8 @@
                 } else {
                     // Use headings in main content to build an anchored TOC
                     const scope = doc.querySelector('.main-content') || doc.body;
-                    const headings = Array.from(scope.querySelectorAll('h1, h2, h3'));
+                    // Only top-level titles (h1) should appear in TOC
+                    const headings = Array.from(scope.querySelectorAll('h1'));
                     headings.forEach((h, index) => {
                         const text = (h.textContent || '').trim();
                         if (!text) return;
