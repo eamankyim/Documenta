@@ -292,6 +292,17 @@
         const contentLoading = document.getElementById('content-loading');
         const documentContent = document.getElementById('document-content');
 
+        // Helper: generate slug from heading text for IDs
+        function slugify(text) {
+            return (text || '')
+                .toString()
+                .toLowerCase()
+                .trim()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-');
+        }
+
         // Load the document content
         async function loadDocument() {
             try {
@@ -306,15 +317,35 @@
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(data.content, 'text/html');
                 
-                // Extract navigation items
-                const navItems = doc.querySelectorAll('.nav-link');
+                // Build TOC from existing nav links or from headings as fallback
                 const tocItems = [];
-                
-                navItems.forEach((item, index) => {
-                    const href = item.getAttribute('href');
-                    const text = item.textContent.trim();
-                    tocItems.push({ href, text, index });
-                });
+                const navItems = Array.from(doc.querySelectorAll('.nav-link'));
+                if (navItems.length > 0) {
+                    navItems.forEach((item, index) => {
+                        const href = item.getAttribute('href');
+                        const text = item.textContent.trim();
+                        tocItems.push({ href, text, index });
+                    });
+                } else {
+                    // Use headings in main content to build an anchored TOC
+                    const scope = doc.querySelector('.main-content') || doc.body;
+                    const headings = Array.from(scope.querySelectorAll('h1, h2, h3'));
+                    headings.forEach((h, index) => {
+                        const text = (h.textContent || '').trim();
+                        if (!text) return;
+                        if (!h.id) {
+                            let base = slugify(text);
+                            let id = base || `section-${index+1}`;
+                            // ensure uniqueness
+                            let counter = 2;
+                            while (scope.querySelector(`#${CSS.escape(id)}`)) {
+                                id = `${base}-${counter++}`;
+                            }
+                            h.id = id;
+                        }
+                        tocItems.push({ href: `#${h.id}`, text, index });
+                    });
+                }
 
                 // Build TOC
                 tocList.innerHTML = '';
