@@ -1918,105 +1918,7 @@
         // Try to initialize modal refs after DOM fully loaded
         window.addEventListener('load', ensurePasteModalRefs);
 
-        // --- diagrams.net (draw.io) embedding ---
-        let diagramModal, diagramFrame, diagramCloseBtn, diagramInsertBtn, diagramExportBtn, diagramImportBtn, diagramOpenNewTabBtn;
-        let diagramRefsInitialized = false;
-        let diagramCurrentXml = null; // store latest mxGraph XML
-
-        function ensureDiagramModalRefs() {
-            if (diagramRefsInitialized) return true;
-            diagramModal = document.getElementById('diagramModal');
-            diagramFrame = document.getElementById('diagramFrame');
-            diagramCloseBtn = document.getElementById('diagramCloseBtn');
-            diagramInsertBtn = document.getElementById('diagramInsertBtn');
-            diagramExportBtn = document.getElementById('diagramExportBtn');
-            diagramImportBtn = document.getElementById('diagramImportBtn');
-            if (!diagramModal || !diagramFrame || !diagramCloseBtn || !diagramInsertBtn || !diagramExportBtn || !diagramImportBtn) return false;
-            diagramOpenNewTabBtn = document.getElementById('diagramOpenNewTabBtn');
-
-            diagramCloseBtn.addEventListener('click', closeDiagramModal);
-            diagramExportBtn.addEventListener('click', () => requestExport('png'));
-            diagramInsertBtn.addEventListener('click', () => requestExport('png'));
-            diagramImportBtn.addEventListener('click', async () => {
-                const xml = prompt('Paste draw.io XML here:');
-                if (xml && diagramFrame) {
-                    diagramCurrentXml = xml;
-                    diagramFrame.contentWindow.postMessage({ action: 'load', xml }, '*');
-                }
-            });
-            if (diagramOpenNewTabBtn) {
-                diagramOpenNewTabBtn.addEventListener('click', () => {
-                    const url = 'https://app.diagrams.net/?src=embed&ui=min&embed=1&libraries=1';
-                    const win = window.open(url, '_blank', 'noopener,noreferrer');
-                    if (!win) {
-                        alert('Popup blocked. Please allow popups for this site.');
-                    }
-                });
-            }
-            diagramRefsInitialized = true;
-            return true;
-        }
-
-        function openDiagramModal() {
-            if (!ensureDiagramModalRefs()) {
-                setTimeout(() => { if (ensureDiagramModalRefs()) openDiagramModal(); }, 0);
-                return;
-            }
-            diagramCurrentXml = null;
-            diagramModal.style.display = 'flex';
-        }
-        function closeDiagramModal() { if (diagramModal) diagramModal.style.display = 'none'; }
-
-        // PostMessage API
-        window.addEventListener('message', function(evt) {
-            // Only respond to messages from diagrams.net
-            if (!diagramRefsInitialized) return;
-            if (!diagramFrame || evt.source !== diagramFrame.contentWindow) return;
-            const msg = evt.data;
-            if (!msg) return;
-            switch (msg.event) {
-                case 'init':
-                    // Editor is ready; request an export to force-ready state
-                    requestSave();
-                    break;
-                case 'export':
-                    // Returns { data: base64png or xml depending on request }
-                    if (msg.data) {
-                        if (msg.data.startsWith('<mxGraphModel')) {
-                            diagramCurrentXml = msg.data;
-                        } else {
-                            // assume PNG/SVG data URL
-                            diagramCurrentXml = diagramCurrentXml || null;
-                            insertDiagramImage(msg.data);
-                        }
-                    }
-                    break;
-                case 'save':
-                    // Save event with XML
-                    diagramCurrentXml = msg.xml || diagramCurrentXml;
-                    break;
-            }
-        });
-
-        function requestExport(format = 'png') {
-            if (!diagramFrame) return;
-            const msg = { action: 'export', format, embedImages: true, spinKey: 'saving', xml: diagramCurrentXml ? diagramCurrentXml : undefined };
-            diagramFrame.contentWindow.postMessage(msg, '*');
-        }
-
-        function requestSave() {
-            if (!diagramFrame) return;
-            diagramFrame.contentWindow.postMessage({ action: 'save', spinKey: 'saving' }, '*');
-        }
-
-        function insertDiagramImage(dataUrl) {
-            insertImageWithBreak(dataUrl);
-            closeDiagramModal();
-            showStatus('Diagram inserted', 'success');
-        }
-
-        // Try to initialize refs after DOM load
-        window.addEventListener('load', ensureDiagramModalRefs);
+        // draw.io embedding removed
 
         // --- GoJS quick-insert flowchart ---
         function insertGoJSFlowchart() {
@@ -2171,6 +2073,8 @@
                         tb.appendChild(group);
                         container.insertBefore(tb, container.firstChild);
                     }
+                    // Make sure toolbar is visible
+                    tb.classList.add('active');
                     const group = tb.querySelector('.flowchart-toolbar-group') || tb;
                     if (!container.querySelector('.gojs-edit-btn')) {
                         const edit = document.createElement('button');
@@ -2221,6 +2125,8 @@
                     wrapper.parentNode.insertBefore(node, wrapper);
                     wrapper.remove();
                     initializeGoJSInContainer(node);
+                    const tb = node.querySelector('.flowchart-toolbar');
+                    if (tb) tb.classList.add('active');
                 } catch (err) {
                     showStatus('Failed to re-edit flowchart', 'error');
                 }
@@ -2270,6 +2176,8 @@
                         container.appendChild(ta);
                     }
                     initializeGoJSInContainer(container);
+                    const tb2 = container.querySelector('.flowchart-toolbar');
+                    if (tb2) tb2.classList.add('active');
                 } catch (err) {
                     showStatus('Failed to re-edit flowchart', 'error');
                 }
@@ -2554,23 +2462,6 @@
         </div>
     </div>
 
-    <!-- Diagram (draw.io) Modal -->
-    <div id="diagramModal" class="diagram-modal-overlay">
-        <div class="diagram-modal">
-            <div class="diagram-modal-header">
-                <div class="diagram-modal-title"><i class="fas fa-sitemap"></i> Diagram Editor</div>
-                <div class="diagram-modal-toolbar">
-                    <button class="btn secondary" id="diagramImportBtn"><i class="fas fa-file-import"></i> Import</button>
-                    <button class="btn secondary" id="diagramExportBtn"><i class="fas fa-file-export"></i> Export</button>
-                    <button class="btn" id="diagramInsertBtn"><i class="fas fa-check"></i> Insert</button>
-                    <button class="btn" id="diagramOpenNewTabBtn"><i class="fas fa-external-link-alt"></i> Open in New Tab</button>
-                    <button class="toolbar-btn" id="diagramCloseBtn" style="padding:6px 10px;"><i class="fas fa-times"></i></button>
-                </div>
-            </div>
-            <div class="diagram-modal-body">
-                <iframe id="diagramFrame" class="diagram-iframe" src="https://embed.diagrams.net/?embed=1&ui=min&spin=1&proto=json&libraries=1" allow="fullscreen; clipboard-read; clipboard-write"></iframe>
-            </div>
-        </div>
-    </div>
+    <!-- draw.io modal removed -->
 </body>
 </html> 
