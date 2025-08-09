@@ -915,7 +915,9 @@
                             reader.onload = () => {
                                 const dataUrl = reader.result;
                                 if (typeof dataUrl === 'string') {
+                                    // Insert then enhance with resizer/align controls
                                     document.execCommand('insertImage', false, dataUrl);
+                                    enhanceImagesForEditing();
                                 }
                             };
                             reader.readAsDataURL(file);
@@ -955,6 +957,88 @@
 
         // Heuristic detection: scan images and suggest conversion for likely flowcharts
         // Removed: detectFlowchartImages
+
+        // Image enhancement: resizable and alignment controls
+        function enhanceImagesForEditing() {
+            const imgs = Array.from(editor.querySelectorAll('img'));
+            imgs.forEach(img => {
+                // Skip GoJS export images (they are wrapped)
+                if (img.closest('.gojs-export-wrapper')) return;
+                // Wrap image
+                let wrap = img.closest('.img-wrap');
+                if (!wrap) {
+                    wrap = document.createElement('span');
+                    wrap.className = 'img-wrap';
+                    wrap.style.display = 'inline-block';
+                    wrap.style.position = 'relative';
+                    wrap.style.maxWidth = '100%';
+                    img.parentNode.insertBefore(wrap, img);
+                    wrap.appendChild(img);
+                }
+                img.style.display = 'block';
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+                // Add resizer handle if missing
+                if (!wrap.querySelector('.img-resize')) {
+                    const handle = document.createElement('span');
+                    handle.className = 'img-resize';
+                    Object.assign(handle.style, {
+                        position: 'absolute', right: '-6px', bottom: '-6px', width: '12px', height: '12px',
+                        background: '#667eea', borderRadius: '50%', cursor: 'nwse-resize', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                    });
+                    wrap.appendChild(handle);
+                    let startX = 0, startW = 0;
+                    const onMove = (e) => {
+                        const dx = e.clientX - startX;
+                        const newW = Math.max(40, startW + dx);
+                        img.style.width = newW + 'px';
+                    };
+                    const onUp = () => {
+                        document.removeEventListener('mousemove', onMove);
+                        document.removeEventListener('mouseup', onUp);
+                    };
+                    handle.addEventListener('mousedown', (e) => {
+                        e.preventDefault(); e.stopPropagation();
+                        startX = e.clientX; startW = img.getBoundingClientRect().width;
+                        document.addEventListener('mousemove', onMove);
+                        document.addEventListener('mouseup', onUp);
+                    });
+                }
+                // Add alignment toolbar if missing
+                if (!wrap.querySelector('.img-toolbar')) {
+                    const bar = document.createElement('div');
+                    bar.className = 'img-toolbar';
+                    Object.assign(bar.style, {
+                        position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: '-32px',
+                        background: '#fff', border: '1px solid #e9ecef', borderRadius: '6px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)', display: 'flex', gap: '6px', padding: '4px 6px'
+                    });
+                    const mkBtn = (title, icon, cb) => {
+                        const b = document.createElement('button'); b.type = 'button'; b.title = title;
+                        b.innerHTML = `<i class="fas ${icon}"></i>`;
+                        Object.assign(b.style, { background:'#fff', border:'1px solid #e9ecef', borderRadius:'4px', padding:'4px 6px', cursor:'pointer' });
+                        b.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); cb(); });
+                        return b;
+                    };
+                    const alignWrap = () => { wrap.style.display = 'block'; wrap.style.textAlign = 'center'; img.style.margin = '0 auto'; };
+                    const alignLeft = () => { wrap.style.display = 'block'; wrap.style.textAlign = 'left'; img.style.margin = '0'; };
+                    const alignRight = () => { wrap.style.display = 'block'; wrap.style.textAlign = 'right'; img.style.margin = '0'; };
+                    bar.appendChild(mkBtn('Align Left','fa-align-left', alignLeft));
+                    bar.appendChild(mkBtn('Center','fa-align-center', alignWrap));
+                    bar.appendChild(mkBtn('Align Right','fa-align-right', alignRight));
+                    wrap.appendChild(bar);
+                    // Show toolbar on hover
+                    wrap.addEventListener('mouseenter', ()=>{ bar.style.display='flex'; });
+                    wrap.addEventListener('mouseleave', ()=>{ bar.style.display='none'; });
+                    bar.style.display = 'none';
+                }
+            });
+        }
+
+        // Enhance any existing images after content load
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(enhanceImagesForEditing, 0);
+        });
 
         function markFlowchartCandidate(img) {
             // Wrap image if not already wrapped
