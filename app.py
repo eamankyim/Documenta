@@ -122,6 +122,18 @@ def download_file(unique_id):
     
     return send_file(html_path, as_attachment=True, download_name=html_file)
 
+@app.route('/api/delete/<unique_id>', methods=['DELETE'])
+def delete_file(unique_id):
+    html_file = f"{unique_id}_converted.html"
+    html_path = os.path.join(app.config['OUTPUT_FOLDER'], html_file)
+    if not os.path.exists(html_path):
+        return jsonify({'error': 'File not found'}), 404
+    try:
+        os.remove(html_path)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/new')
 def new_document():
     """Create a new blank document and redirect to the editor."""

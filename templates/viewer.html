@@ -199,18 +199,18 @@
     <div class="header">
         <div class="header-content">
             <div class="logo">
-                <i class="fas fa-file-pdf"></i> PDF Viewer
+                <i class="fas fa-file-pdf"></i> Document Viewer
             </div>
             <div class="header-actions">
                 <a href="/" class="btn secondary">
                     <i class="fas fa-home"></i> Home
                 </a>
                 <a href="/edit/{{ unique_id }}" class="btn">
-                    <i class="fas fa-edit"></i> Edit
+                    <i class="fas fa-edit"></i> Edit Document
                 </a>
-                <a href="/download/{{ unique_id }}" class="btn secondary">
-                    <i class="fas fa-download"></i> Download
-                </a>
+                <div class="btn secondary" id="optionsBtn">
+                    <i class="fas fa-ellipsis-v"></i> Options
+                </div>
             </div>
         </div>
     </div>
@@ -240,6 +240,53 @@
     </div>
 
     <script>
+        // Options menu
+        (function(){
+            const btn = document.getElementById('optionsBtn');
+            if (!btn) return;
+            const menu = document.createElement('div');
+            menu.style.position = 'absolute';
+            menu.style.right = '30px';
+            menu.style.top = '60px';
+            menu.style.background = '#fff';
+            menu.style.border = '1px solid #e9ecef';
+            menu.style.borderRadius = '8px';
+            menu.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+            menu.style.padding = '8px 0';
+            menu.style.display = 'none';
+            menu.style.minWidth = '180px';
+            menu.innerHTML = `
+                <a href="/download/{{ unique_id }}" style="display:block; padding:10px 16px; color:#2c3e50; text-decoration:none;"><i class="fas fa-download"></i> Download</a>
+                <a href="#" id="shareLink" style="display:block; padding:10px 16px; color:#2c3e50; text-decoration:none;"><i class="fas fa-share"></i> Share</a>
+                <a href="#" id="deleteLink" style="display:block; padding:10px 16px; color:#dc3545; text-decoration:none;"><i class="fas fa-trash"></i> Delete</a>
+            `;
+            document.body.appendChild(menu);
+            btn.addEventListener('click', () => {
+                menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+            });
+            document.addEventListener('click', (e) => {
+                if (!btn.contains(e.target) && !menu.contains(e.target)) menu.style.display = 'none';
+            });
+            document.getElementById('shareLink').addEventListener('click', async (e) => {
+                e.preventDefault();
+                const url = window.location.origin + '/view/{{ unique_id }}';
+                try {
+                    await navigator.clipboard.writeText(url);
+                    alert('View link copied to clipboard');
+                } catch { alert(url); }
+                menu.style.display = 'none';
+            });
+            document.getElementById('deleteLink').addEventListener('click', async (e) => {
+                e.preventDefault();
+                if (!confirm('Delete this document? This cannot be undone.')) return;
+                try {
+                    const res = await fetch('/api/delete/{{ unique_id }}', { method: 'DELETE' });
+                    const json = await res.json();
+                    if (json.success) { window.location.href = '/'; } else { alert(json.error || 'Delete failed'); }
+                } catch { alert('Delete failed'); }
+            });
+        })();
+
         const uniqueId = '{{ unique_id }}';
         const tocList = document.getElementById('toc-list');
         const contentLoading = document.getElementById('content-loading');

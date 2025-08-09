@@ -1938,6 +1938,7 @@
                     { from: 2, to: 3 }
                 ]
             };
+            console.log('[GoJS] insertGoJSFlowchart called');
             const html = `
                 <div class="flowchart-container gojs-container" id="${idBase}-wrap" contenteditable="false" style="min-height:420px;">
                     <div class="flowchart-toolbar active">
@@ -1956,10 +1957,16 @@
                     </div>
                     <textarea class="gojs-model" style="display:none;">${JSON.stringify(modelJson)}</textarea>
                 </div>`;
+            console.log('[GoJS] inserting HTML block');
             insertHtmlIntoEditor(html);
             requestAnimationFrame(() => {
                 const container = document.getElementById(`${idBase}-wrap`);
-                if (container) initializeGoJSInContainer(container);
+                if (container) {
+                    console.log('[GoJS] initializing container', container.id);
+                    initializeGoJSInContainer(container);
+                } else {
+                    console.warn('[GoJS] container not found');
+                }
             });
         }
 
@@ -2093,6 +2100,7 @@
             if (!btn) return;
             const wrapper = btn.closest('.gojs-export-wrapper');
             if (wrapper) {
+                console.log('[GoJS] re-edit from exported image wrapper');
                 const b64 = wrapper.getAttribute('data-gojs-model');
                 if (!b64) return;
                 try {
@@ -2124,6 +2132,7 @@
                     const node = temp.firstChild;
                     wrapper.parentNode.insertBefore(node, wrapper);
                     wrapper.remove();
+                    console.log('[GoJS] initializing re-edit node from wrapper');
                     initializeGoJSInContainer(node);
                     const tb = node.querySelector('.flowchart-toolbar');
                     if (tb) tb.classList.add('active');
@@ -2134,6 +2143,7 @@
             }
             const container = btn.closest('.gojs-container');
             if (container) {
+                console.log('[GoJS] re-edit existing locked container');
                 try {
                     const diagramDiv = container.querySelector(':scope > .flowchart-canvas > div[id^="gojs-"]:not([id$="-palette"])');
                     const modelEl = container.querySelector(':scope > textarea.gojs-model');
@@ -2175,6 +2185,7 @@
                         ta.textContent = JSON.stringify(model);
                         container.appendChild(ta);
                     }
+                    console.log('[GoJS] initializing existing container');
                     initializeGoJSInContainer(container);
                     const tb2 = container.querySelector('.flowchart-toolbar');
                     if (tb2) tb2.classList.add('active');
@@ -2253,6 +2264,7 @@
             try { if (modelEl && modelEl.value) modelData = JSON.parse(modelEl.value); else if (modelEl && modelEl.textContent) modelData = JSON.parse(modelEl.textContent); } catch (e) {}
 
             const $ = go.GraphObject.make;
+            console.log('[GoJS] initializeGoJSInContainer', { container, diagramDiv });
             const diagram = $(go.Diagram, diagramDiv, {
                 'undoManager.isEnabled': true,
                 layout: $(go.LayeredDigraphLayout, { direction: 90 })
@@ -2351,6 +2363,7 @@
             container.querySelectorAll('.flowchart-toolbar-btn').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     const action = btn.dataset.action;
+                    console.log('[GoJS] toolbar action', action);
                     if (action === 'clear') {
                         diagram.model = new go.GraphLinksModel([], []);
                         syncModelToDom();

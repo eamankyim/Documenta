@@ -313,7 +313,7 @@
                     return;
                 }
                 projectGrid.innerHTML = docs.map(d => `
-                    <div class="project-card" onclick="window.location.href='/edit/${d.unique_id}'" tabindex="0" role="button" aria-label="Open ${ (d.title || d.filename).replace(/"/g,'&quot;') }">
+                    <div class="project-card" onclick="window.location.href='/view/${d.unique_id}'" tabindex="0" role="button" aria-label="Open ${ (d.title || d.filename).replace(/"/g,'&quot;') }">
                         <div class="project-thumb"><i class="fas fa-file-alt"></i></div>
                         <div class="project-body">
                             <div class="project-title">${(d.title || d.filename).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
