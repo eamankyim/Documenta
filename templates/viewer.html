@@ -317,8 +317,9 @@
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(data.content, 'text/html');
                 
-                // Build TOC from existing nav links or from headings as fallback
+                // Build TOC from existing nav links OR from numbered headings/content OR fallback to h1
                 const tocItems = [];
+                const scope = doc.querySelector('.main-content') || doc.body;
                 const navItems = Array.from(doc.querySelectorAll('.nav-link'));
                 if (navItems.length > 0) {
                     navItems.forEach((item, index) => {
@@ -327,24 +328,28 @@
                         tocItems.push({ href, text, index });
                     });
                 } else {
-                    // Use headings in main content to build an anchored TOC
-                    const scope = doc.querySelector('.main-content') || doc.body;
-                    // Only top-level titles (h1) should appear in TOC
-                    const headings = Array.from(scope.querySelectorAll('h1'));
-                    headings.forEach((h, index) => {
-                        const text = (h.textContent || '').trim();
+                    // Prefer numerically-prefixed elements like "1.", "1.1", "1.1.1"
+                    const numberPrefixRe = /^\s*\d+(?:\.\d+)*[).]?\s+/;
+                    const candidates = Array.from(scope.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,div'))
+                        .filter(el => numberPrefixRe.test((el.textContent || '').trim()))
+                        // Avoid picking very long paragraphs that happen to start with numbers
+                        .filter(el => (el.textContent || '').trim().length <= 200);
+                    const list = candidates.length > 0
+                        ? candidates
+                        : Array.from(scope.querySelectorAll('h1')); // fallback to top-level titles only
+                    list.forEach((el, index) => {
+                        const text = (el.textContent || '').trim();
                         if (!text) return;
-                        if (!h.id) {
+                        if (!el.id) {
                             let base = slugify(text);
                             let id = base || `section-${index+1}`;
-                            // ensure uniqueness
                             let counter = 2;
                             while (scope.querySelector(`#${CSS.escape(id)}`)) {
                                 id = `${base}-${counter++}`;
                             }
-                            h.id = id;
+                            el.id = id;
                         }
-                        tocItems.push({ href: `#${h.id}`, text, index });
+                        tocItems.push({ href: `#${el.id}`, text, index });
                     });
                 }
 
