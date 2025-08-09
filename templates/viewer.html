@@ -317,55 +317,6 @@
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(data.content, 'text/html');
                 
-                // Build TOC from existing nav links OR from numbered headings/content OR fallback to h1
-                const tocItems = [];
-                const scope = doc.querySelector('.main-content') || doc.body;
-                const navItems = Array.from(doc.querySelectorAll('.nav-link'));
-                if (navItems.length > 0) {
-                    navItems.forEach((item, index) => {
-                        const href = item.getAttribute('href');
-                        const text = item.textContent.trim();
-                        tocItems.push({ href, text, index });
-                    });
-                } else {
-                    // Prefer numerically-prefixed elements like "1.", "1.1", "1.1.1"
-                    const numberPrefixRe = /^\s*\d+(?:\.\d+)*[).]?\s+/;
-                    const candidates = Array.from(scope.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,div'))
-                        .filter(el => numberPrefixRe.test((el.textContent || '').trim()))
-                        // Avoid picking very long paragraphs that happen to start with numbers
-                        .filter(el => (el.textContent || '').trim().length <= 200);
-                    const list = candidates.length > 0
-                        ? candidates
-                        : Array.from(scope.querySelectorAll('h1')); // fallback to top-level titles only
-                    list.forEach((el, index) => {
-                        const text = (el.textContent || '').trim();
-                        if (!text) return;
-                        if (!el.id) {
-                            let base = slugify(text);
-                            let id = base || `section-${index+1}`;
-                            let counter = 2;
-                            while (scope.querySelector(`#${CSS.escape(id)}`)) {
-                                id = `${base}-${counter++}`;
-                            }
-                            el.id = id;
-                        }
-                        tocItems.push({ href: `#${el.id}`, text, index });
-                    });
-                }
-
-                // Build TOC
-                tocList.innerHTML = '';
-                tocItems.forEach(item => {
-                    const li = document.createElement('li');
-                    li.className = 'toc-item';
-                    li.innerHTML = `
-                        <a href="${item.href}" class="toc-link" data-target="${item.href}">
-                            ${item.text}
-                        </a>
-                    `;
-                    tocList.appendChild(li);
-                });
-
                 // Extract main content
                 const mainContent = doc.querySelector('.main-content');
                 if (mainContent) {
@@ -378,19 +329,47 @@
                 contentLoading.style.display = 'none';
                 documentContent.style.display = 'block';
 
-                // Add smooth scrolling
-                document.querySelectorAll('.toc-link').forEach(link => {
-                    link.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const target = document.querySelector(link.getAttribute('data-target'));
-                        if (target) {
-                            target.scrollIntoView({
-                                behavior: 'smooth',
-                                block: 'start'
-                            });
+                // Build TOC from the displayed content to ensure IDs exist and link properly
+                (function buildDisplayedTOC(){
+                    const tocItems = [];
+                    const scope = documentContent;
+                    const numberPrefixRe = /^\s*\d+(?:\.\d+)*[).]?\s+/;
+                    const candidates = Array.from(scope.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,div'))
+                        .filter(el => numberPrefixRe.test((el.textContent || '').trim()))
+                        .filter(el => (el.textContent || '').trim().length <= 200);
+                    const list = candidates.length > 0 ? candidates : Array.from(scope.querySelectorAll('h1'));
+                    list.forEach((el, index) => {
+                        const text = (el.textContent || '').trim();
+                        if (!text) return;
+                        if (!el.id) {
+                            let base = slugify(text);
+                            let id = base || `section-${index+1}`;
+                            let counter = 2;
+                            while (scope.querySelector(`#${id}`)) { id = `${base}-${counter++}`; }
+                            el.id = id;
                         }
+                        tocItems.push({ href: `#${el.id}`, text, index });
                     });
-                });
+                    tocList.innerHTML = '';
+                    tocItems.forEach(item => {
+                        const li = document.createElement('li');
+                        li.className = 'toc-item';
+                        li.innerHTML = `<a href="${item.href}" class="toc-link" data-target="${item.href}">${item.text}</a>`;
+                        tocList.appendChild(li);
+                    });
+                    // Smooth scrolling within content
+                    tocList.querySelectorAll('.toc-link').forEach(link => {
+                        link.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            const selector = link.getAttribute('data-target');
+                            const target = documentContent.querySelector(selector) || document.getElementById(selector.replace('#',''));
+                            if (target) {
+                                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                history.replaceState(null, '', selector);
+                            }
+                        });
+                    });
+                })();
 
             } catch (error) {
                 contentLoading.innerHTML = `
