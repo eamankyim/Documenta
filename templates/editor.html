@@ -1818,16 +1818,18 @@
             }
         });
 
-        // Prevent editing of toolbar elements
+        // Prevent editing of toolbar elements (but allow form controls like selects and color inputs)
         document.addEventListener('DOMContentLoaded', function() {
             const toolbar = document.querySelector('.toolbar');
             if (toolbar) {
                 toolbar.addEventListener('click', function(e) {
+                    if (e.target && (e.target.closest('select') || e.target.closest('input[type="color"]'))) return;
                     e.preventDefault();
                     e.stopPropagation();
                 });
-                
+
                 toolbar.addEventListener('mousedown', function(e) {
+                    if (e.target && (e.target.closest('select') || e.target.closest('input[type="color"]'))) return;
                     e.preventDefault();
                     e.stopPropagation();
                 });
@@ -1849,11 +1851,13 @@
             nonEditableSelectors.forEach(selector => {
                 document.querySelectorAll(selector).forEach(element => {
                     element.addEventListener('mousedown', function(e) {
+                        if (e.target && (e.target.closest('select') || e.target.closest('input[type="color"]'))) return;
                         e.preventDefault();
                         e.stopPropagation();
                     });
-                    
+
                     element.addEventListener('click', function(e) {
+                        if (e.target && (e.target.closest('select') || e.target.closest('input[type="color"]'))) return;
                         e.preventDefault();
                         e.stopPropagation();
                     });
