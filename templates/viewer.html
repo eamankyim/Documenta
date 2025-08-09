@@ -306,6 +306,10 @@
             if (eb) eb.style.display = 'none';
             const dl = document.getElementById('downloadLink');
             if (dl) dl.style.display = 'none';
+            const opt = document.getElementById('optionsBtn');
+            if (opt) opt.style.display = 'none';
+            const home = document.querySelector('.header-actions a[href="/"]');
+            if (home) home.style.display = 'none';
         }
         const tocList = document.getElementById('toc-list');
         const contentLoading = document.getElementById('content-loading');
@@ -366,6 +370,35 @@
                 documentContent.style.display = 'block';
                 // Clear TOC loading state immediately
                 tocList.innerHTML = '';
+
+                // For shared view: set header title to document title and provide an Open button only
+                if (isShared) {
+                    let docTitle = '';
+                    try {
+                        const headTitle = (doc.querySelector('title') && doc.querySelector('title').textContent) || '';
+                        const firstH1 = (documentContent.querySelector('h1') && documentContent.querySelector('h1').textContent) || '';
+                        docTitle = (firstH1 || headTitle || 'Document').trim();
+                    } catch (_) { docTitle = 'Document'; }
+                    const logo = document.querySelector('.logo');
+                    if (logo) logo.innerHTML = `<i class="fas fa-file-pdf"></i> ${docTitle}`;
+                    const actions = document.querySelector('.header-actions');
+                    if (actions) {
+                        // remove all children then add just Open button
+                        actions.innerHTML = '';
+                        const openBtn = document.createElement('a');
+                        openBtn.href = '#';
+                        openBtn.className = 'btn';
+                        openBtn.innerHTML = '<i class="fas fa-folder-open"></i> Open';
+                        openBtn.addEventListener('click', (e)=>{
+                            e.preventDefault();
+                            const header = document.querySelector('.header');
+                            const headerH = header ? header.offsetHeight : 0;
+                            const y = document.querySelector('.content-area').getBoundingClientRect().top + window.scrollY - headerH - 10;
+                            window.scrollTo({ top: y, behavior: 'smooth' });
+                        });
+                        actions.appendChild(openBtn);
+                    }
+                }
 
                 // Build TOC from the displayed content to ensure IDs exist and link properly
                 (function buildDisplayedTOC(){
