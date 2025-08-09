@@ -840,6 +840,12 @@
                     <option value="5">Large</option>
                     <option value="7">Extra Large</option>
                 </select>
+                <select id="lineSpacing" title="Line Spacing">
+                    <option value="1">1.0</option>
+                    <option value="1.15" selected>1.15</option>
+                    <option value="1.5">1.5</option>
+                    <option value="2">2.0</option>
+                </select>
                 <select id="fontFamily" title="Font Family">
                     <option value="Arial">Arial</option>
                     <option value="Times New Roman">Times New Roman</option>
@@ -1117,6 +1123,39 @@
 
         document.getElementById('fontFamily').addEventListener('change', (e) => {
             document.execCommand('fontName', false, e.target.value);
+        });
+
+        // Line spacing: wrap selection's parent block(s) and set line-height
+        function applyLineSpacing(multiplier) {
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return;
+            const range = sel.getRangeAt(0);
+            // Find nearest block element within editor
+            let node = range.commonAncestorContainer;
+            if (node.nodeType === 3) node = node.parentNode;
+            // If selection spans multiple blocks, apply to each block-level element inside range
+            const blocks = new Set();
+            const walker = document.createTreeWalker(editor, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null);
+            while (walker.nextNode()) {
+                const n = walker.currentNode;
+                if (!range.intersectsNode(n)) continue;
+                const el = n.nodeType === 3 ? n.parentElement : n;
+                if (!el) continue;
+                // consider p, div, li, h1..h6 as blocks
+                const isBlock = /^(P|DIV|LI|H[1-6])$/.test(el.tagName);
+                if (isBlock) blocks.add(el);
+            }
+            if (blocks.size === 0) {
+                // fallback: apply to the nearest paragraph
+                let p = node;
+                while (p && p !== editor && !/^(P|DIV|LI|H[1-6])$/.test(p.tagName)) p = p.parentElement;
+                if (p && p !== editor) blocks.add(p);
+            }
+            blocks.forEach(b => { b.style.lineHeight = multiplier; });
+        }
+
+        document.getElementById('lineSpacing').addEventListener('change', (e) => {
+            applyLineSpacing(e.target.value);
         });
 
         document.getElementById('textColor').addEventListener('change', (e) => {
