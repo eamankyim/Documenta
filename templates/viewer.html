@@ -266,7 +266,7 @@
             menu.style.display = 'none';
             menu.style.minWidth = '180px';
             menu.innerHTML = `
-                <a href="/download/{{ unique_id }}" style="display:block; padding:10px 16px; color:#2c3e50; text-decoration:none;"><i class="fas fa-download"></i> Download</a>
+                <a href="#" id="downloadLink" style="display:block; padding:10px 16px; color:#2c3e50; text-decoration:none;"><i class="fas fa-download"></i> Download</a>
                 <a href="#" id="shareLink" style="display:block; padding:10px 16px; color:#2c3e50; text-decoration:none;"><i class="fas fa-share"></i> Share</a>
                 <a href="#" id="deleteLink" style="display:block; padding:10px 16px; color:#dc3545; text-decoration:none;"><i class="fas fa-trash"></i> Delete</a>
             `;
@@ -290,7 +290,8 @@
                 e.preventDefault();
                 if (!confirm('Delete this document? This cannot be undone.')) return;
                 try {
-                    const res = await fetch('/api/delete/{{ unique_id }}', { method: 'DELETE' });
+                    const tok = document.getElementById('deleteLink').getAttribute('data-token') || '';
+                    const res = await fetch(`/api/delete/{{ unique_id }}?token=${encodeURIComponent(tok)}`, { method: 'DELETE' });
                     const json = await res.json();
                     if (json.success) { window.location.href = '/'; } else { alert(json.error || 'Delete failed'); }
                 } catch { alert('Delete failed'); }
@@ -302,6 +303,8 @@
         if (isShared) {
             const eb = document.getElementById('editBtnViewer');
             if (eb) eb.style.display = 'none';
+            const dl = document.getElementById('downloadLink');
+            if (dl) dl.style.display = 'none';
         }
         const tocList = document.getElementById('toc-list');
         const contentLoading = document.getElementById('content-loading');
@@ -317,6 +320,23 @@
                 .replace(/\s+/g, '-')
                 .replace(/-+/g, '-');
         }
+
+        // Secure links: fetch edit/download token when not shared
+        (async function secureLinks(){
+            try {
+                if (isShared) return;
+                const res = await fetch(`/api/token/${uniqueId}`);
+                const data = await res.json();
+                if (data && data.token) {
+                    const eb = document.getElementById('editBtnViewer');
+                    if (eb) eb.href = `/edit/${uniqueId}?token=${encodeURIComponent(data.token)}`;
+                    const dl = document.getElementById('downloadLink');
+                    if (dl) dl.href = `/download/${uniqueId}?token=${encodeURIComponent(data.token)}`;
+                    const del = document.getElementById('deleteLink');
+                    if (del) del.setAttribute('data-token', data.token);
+                }
+            } catch(e) { /* ignore */ }
+        })();
 
         // Load the document content
         async function loadDocument() {

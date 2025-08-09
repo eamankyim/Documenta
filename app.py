@@ -10,6 +10,7 @@ import re
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['OUTPUT_FOLDER'] = 'outputs'
+app.config['TOKENS_FILE'] = os.path.join(app.config['OUTPUT_FOLDER'], 'tokens.json')
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
 CONVERSION_ENABLED = False  # Disable PDF extraction/conversion; use as formatting tool only
 
@@ -18,6 +19,35 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
 
 ALLOWED_EXTENSIONS = {'pdf'}
+
+# Simple token store persisted to a JSON file
+def _load_tokens():
+    try:
+        if os.path.exists(app.config['TOKENS_FILE']):
+            with open(app.config['TOKENS_FILE'], 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+def _save_tokens(tokens):
+    os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
+    with open(app.config['TOKENS_FILE'], 'w', encoding='utf-8') as f:
+        json.dump(tokens, f)
+
+def _get_or_create_token(unique_id):
+    tokens = _load_tokens()
+    tok = tokens.get(unique_id)
+    if not tok:
+        tok = uuid.uuid4().hex
+        tokens[unique_id] = tok
+        _save_tokens(tokens)
+    return tok
+
+def _verify_token(unique_id, provided):
+    tokens = _load_tokens()
+    expected = tokens.get(unique_id)
+    return bool(expected) and provided == expected
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -80,6 +110,10 @@ def edit_converted(unique_id):
     
     if not os.path.exists(html_path):
         return "File not found", 404
+    # Enforce token for editing
+    token = request.args.get('token')
+    if not _verify_token(unique_id, token):
+        return "Forbidden: missing or invalid edit token", 403
     
     return render_template('editor.html', unique_id=unique_id)
 
@@ -98,6 +132,9 @@ def get_content(unique_id):
 
 @app.route('/api/save/<unique_id>', methods=['POST'])
 def save_content(unique_id):
+    token = request.args.get('token')
+    if not _verify_token(unique_id, token):
+        return jsonify({'error': 'Forbidden'}), 403
     data = request.get_json()
     content = data.get('content')
     
@@ -114,6 +151,9 @@ def save_content(unique_id):
 
 @app.route('/download/<unique_id>')
 def download_file(unique_id):
+    token = request.args.get('token')
+    if not _verify_token(unique_id, token):
+        return "Forbidden: missing or invalid token", 403
     html_file = f"{unique_id}_converted.html"
     html_path = os.path.join(app.config['OUTPUT_FOLDER'], html_file)
     
@@ -124,6 +164,9 @@ def download_file(unique_id):
 
 @app.route('/api/delete/<unique_id>', methods=['DELETE'])
 def delete_file(unique_id):
+    token = request.args.get('token')
+    if not _verify_token(unique_id, token):
+        return jsonify({'error': 'Forbidden'}), 403
     html_file = f"{unique_id}_converted.html"
     html_path = os.path.join(app.config['OUTPUT_FOLDER'], html_file)
     if not os.path.exists(html_path):
@@ -173,7 +216,9 @@ def new_document():
     with open(html_path, 'w', encoding='utf-8') as f:
         f.write(default_html)
 
-    return redirect(url_for('edit_converted', unique_id=unique_id))
+    # create edit token
+    _get_or_create_token(unique_id)
+    return redirect(url_for('edit_converted', unique_id=unique_id, token=_get_or_create_token(unique_id)))
 
 @app.route('/api/list_outputs')
 def list_outputs():
@@ -219,6 +264,15 @@ def list_outputs():
     # Sort by most recent first
     documents.sort(key=lambda d: d.get('modified') or '', reverse=True)
     return jsonify({'documents': documents})
+
+@app.route('/api/token/<unique_id>')
+def get_token(unique_id):
+    html_file = f"{unique_id}_converted.html"
+    html_path = os.path.join(app.config['OUTPUT_FOLDER'], html_file)
+    if not os.path.exists(html_path):
+        return jsonify({'error': 'File not found'}), 404
+    tok = _get_or_create_token(unique_id)
+    return jsonify({'token': tok})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000) 
