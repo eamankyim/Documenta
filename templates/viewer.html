@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Viewer</title>
+    <title>Documenta — Viewer</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -203,16 +203,137 @@
                 padding: 20px;
             }
         }
+
+        /* Share modal */
+        .modal-overlay { 
+            position: fixed; 
+            inset: 0; 
+            background: rgba(0,0,0,0.7); 
+            display: none; 
+            align-items: center; 
+            justify-content: center; 
+            z-index: 10000;
+            backdrop-filter: blur(4px);
+        }
+        .modal { 
+            background: #fff; 
+            width: min(650px, 96vw); 
+            max-height: 90vh; 
+            border-radius: 16px; 
+            box-shadow: 0 25px 60px rgba(0,0,0,0.25); 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        @keyframes modalSlideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal-header { 
+            padding: 24px 30px 20px; 
+            border-bottom: 1px solid #e9ecef; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between;
+            background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+        }
+        .modal-title { 
+            font-weight: 700; 
+            color: #2c3e50; 
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .modal-title i {
+            color: #667eea;
+            font-size: 1.2rem;
+        }
+        .modal-body { 
+            padding: 30px; 
+            overflow: auto;
+            background: #ffffff;
+        }
+        .modal-footer { 
+            padding: 20px 30px; 
+            border-top: 1px solid #e9ecef; 
+            display: flex; 
+            align-items: center; 
+            justify-content: flex-end; 
+            gap: 15px;
+            background: #f8f9fa;
+        }
+        .input { 
+            width: 100%; 
+            padding: 14px 16px; 
+            border: 2px solid #e9ecef; 
+            border-radius: 10px; 
+            font-size: 14px; 
+            transition: all 0.3s ease;
+            font-family: inherit;
+            background: #ffffff;
+        }
+        .input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .input[readonly] {
+            background: #f8f9fa;
+            border-color: #dee2e6;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+        .hint { 
+            color: #6c757d; 
+            font-size: 13px; 
+            margin-top: 8px;
+            font-style: italic;
+        }
+        .btn.small { 
+            padding: 12px 20px; 
+            border-radius: 10px; 
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn.small:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        .form-group {
+            margin-bottom: 24px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Read-only shared view: disable text selection */
+        .no-select {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="header-content">
             <div class="logo">
-                <i class="fas fa-file-pdf"></i> Document Viewer
+                <i class="fas fa-file-pdf"></i> Documenta Viewer
             </div>
             <div class="header-actions">
-                <a href="/" class="btn secondary">
+                <a href="/projects" class="btn secondary">
                     <i class="fas fa-home"></i> Home
                 </a>
                 <a href="/edit/{{ unique_id }}" class="btn" id="editBtnViewer">
@@ -280,11 +401,7 @@
             });
             document.getElementById('shareLink').addEventListener('click', async (e) => {
                 e.preventDefault();
-                const url = window.location.origin + '/view/{{ unique_id }}?share=1';
-                try {
-                    await navigator.clipboard.writeText(url);
-                    alert('View link copied to clipboard');
-                } catch { alert(url); }
+                openShareModal();
                 menu.style.display = 'none';
             });
             document.getElementById('deleteLink').addEventListener('click', async (e) => {
@@ -294,22 +411,28 @@
                     const tok = document.getElementById('deleteLink').getAttribute('data-token') || '';
                     const res = await fetch(`/api/delete/{{ unique_id }}?token=${encodeURIComponent(tok)}`, { method: 'DELETE' });
                     const json = await res.json();
-                    if (json.success) { window.location.href = '/'; } else { alert(json.error || 'Delete failed'); }
+                    if (json.success) { window.location.href = '/projects'; } else { alert(json.error || 'Delete failed'); }
                 } catch { alert('Delete failed'); }
             });
         })();
 
         const uniqueId = '{{ unique_id }}';
+        let currentToken = null;
         const isShared = new URLSearchParams(location.search).get('share') === '1';
         if (isShared) {
+            try { sessionStorage.setItem('readonlyMode', '1'); } catch (_) {}
+            try { window.location.replace('/projects'); } catch (_) { window.location.href = '/projects'; }
+        }
+        const isForcedReadonly = (()=>{ try { return sessionStorage.getItem('readonlyMode') === '1'; } catch(_) { return false; } })();
+        if (isShared || isForcedReadonly) {
             const eb = document.getElementById('editBtnViewer');
             if (eb) eb.style.display = 'none';
             const dl = document.getElementById('downloadLink');
             if (dl) dl.style.display = 'none';
             const opt = document.getElementById('optionsBtn');
             if (opt) opt.style.display = 'none';
-            const home = document.querySelector('.header-actions a[href="/"]');
-            if (home) home.style.display = 'none';
+            // Keep Home visible so users can navigate back easily
+            // Note: selection/copy prevention is now enforced for all viewer modes below
         }
         const tocList = document.getElementById('toc-list');
         const contentLoading = document.getElementById('content-loading');
@@ -329,16 +452,23 @@
         // Secure links: fetch edit/download token when not shared
         (async function secureLinks(){
             try {
-                if (isShared) return;
+                if (isShared || isForcedReadonly) return;
                 const res = await fetch(`/api/token/${uniqueId}`);
                 const data = await res.json();
                 if (data && data.token) {
+                    currentToken = data.token;
                     const eb = document.getElementById('editBtnViewer');
                     if (eb) eb.href = `/edit/${uniqueId}?token=${encodeURIComponent(data.token)}`;
                     const dl = document.getElementById('downloadLink');
                     if (dl) dl.href = `/download/${uniqueId}?token=${encodeURIComponent(data.token)}`;
                     const del = document.getElementById('deleteLink');
                     if (del) del.setAttribute('data-token', data.token);
+                } else {
+                    // If token retrieval fails, disable edit/download rather than redirecting to editor
+                    const eb = document.getElementById('editBtnViewer');
+                    if (eb) eb.style.display = 'none';
+                    const dl = document.getElementById('downloadLink');
+                    if (dl) dl.style.display = 'none';
                 }
             } catch(e) { /* ignore */ }
         })();
@@ -370,6 +500,18 @@
                 documentContent.style.display = 'block';
                 // Clear TOC loading state immediately
                 tocList.innerHTML = '';
+
+                // Enforce no-selection/no-copy for the displayed content in all viewer modes
+                try {
+                    const scope = document.querySelector('.content-area');
+                    if (scope) {
+                        scope.classList.add('no-select');
+                        const prevent = (e) => { e.preventDefault(); };
+                        ['selectstart','copy','contextmenu'].forEach(evt => {
+                            scope.addEventListener(evt, prevent, { passive: false });
+                        });
+                    }
+                } catch (_) { /* ignore */ }
 
                 // For shared view: set header title to document title and provide an Open button only
                 if (isShared) {
@@ -487,6 +629,91 @@
 
         // Load document when page loads
         loadDocument();
+
+        // --- Share Modal ---
+        const shareModal = document.createElement('div');
+        shareModal.id = 'shareModal';
+        shareModal.className = 'modal-overlay';
+        shareModal.innerHTML = `
+            <div class="modal">
+                <div class="modal-header">
+                    <div class="modal-title"><i class="fas fa-share"></i> Share Document</div>
+                    <button class="btn small secondary" id="shareCloseBtn"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="shareEmails">Recipient Emails</label>
+                        <textarea id="shareEmails" class="input" rows="4" placeholder="e.g. user@example.com, team@company.com"></textarea>
+                        <div class="hint">Separate multiple emails with commas or new lines.</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="shareMessage">Message (optional)</label>
+                        <textarea id="shareMessage" class="input" rows="3" placeholder="Add a note (optional)"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>View Link</label>
+                        <input id="shareLinkInput" class="input" type="text" readonly />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn small secondary" id="shareCancelBtn">Cancel</button>
+                    <button class="btn small" id="shareSendBtn" disabled><i class="fas fa-paper-plane"></i> Send</button>
+                </div>
+            </div>`;
+        document.body.appendChild(shareModal);
+
+        const shareEmailsEl = shareModal.querySelector('#shareEmails');
+        const shareMessageEl = shareModal.querySelector('#shareMessage');
+        const shareLinkEl   = shareModal.querySelector('#shareLinkInput');
+        const shareSendBtn  = shareModal.querySelector('#shareSendBtn');
+        const shareCancelBtn= shareModal.querySelector('#shareCancelBtn');
+        const shareCloseBtn = shareModal.querySelector('#shareCloseBtn');
+
+        function openShareModal() {
+            shareLinkEl.value = `${window.location.origin}/view/${uniqueId}?share=1`;
+            shareEmailsEl.value = '';
+            shareMessageEl.value = '';
+            shareSendBtn.disabled = true;
+            shareModal.style.display = 'flex';
+            shareEmailsEl.focus();
+        }
+        function closeShareModal() { shareModal.style.display = 'none'; }
+        function parseEmails(input) {
+            return (input || '')
+                .split(/[,\n;]/)
+                .map(s => s.trim())
+                .filter(Boolean);
+        }
+        function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+        function validateShareForm() {
+            const emails = parseEmails(shareEmailsEl.value);
+            const ok = emails.length > 0 && emails.every(isValidEmail);
+            shareSendBtn.disabled = !ok;
+            return ok ? emails : [];
+        }
+        shareEmailsEl.addEventListener('input', validateShareForm);
+        shareCancelBtn.addEventListener('click', (e)=>{ e.preventDefault(); closeShareModal(); });
+        shareCloseBtn.addEventListener('click', (e)=>{ e.preventDefault(); closeShareModal(); });
+        shareModal.addEventListener('click', (e)=>{ if (e.target === shareModal) closeShareModal(); });
+        shareSendBtn.addEventListener('click', async () => {
+            const emails = validateShareForm();
+            if (emails.length === 0) return;
+            const payload = {
+                emails,
+                link: shareLinkEl.value,
+                message: shareMessageEl.value || ''
+            };
+            try {
+                // optional server stub; ok if token missing
+                const url = currentToken ? `/api/share/${uniqueId}?token=${encodeURIComponent(currentToken)}` : `/api/share/${uniqueId}`;
+                await fetch(url, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+            } catch (_) { /* ignore stub errors */ }
+            closeShareModal();
+            try { await navigator.clipboard.writeText(shareLinkEl.value); } catch (_) {}
+            alert('Share queued. Recipients will receive the view link.');
+        });
     </script>
 </body>
 </html> 

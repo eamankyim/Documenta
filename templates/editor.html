@@ -3,7 +3,7 @@
     <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Editor</title>
+    <title>Documenta — Editor</title>
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
         <script src="https://unpkg.com/@jsplumb/browser-ui@6.3.9/dist/js/jsplumb-browser-ui.umd.min.js"></script>
         <script src="https://unpkg.com/gojs/release/go.js"></script>
@@ -244,6 +244,73 @@
             color: #2c3e50;
         }
         .editor p { min-height: 1em; }
+
+        /* Marquee selection and multi-select styles */
+        .multi-selected {
+            outline: 2px dashed #28a745;
+            outline-offset: 2px;
+        }
+        .selection-rect {
+            position: absolute;
+            border: 2px solid rgba(102,126,234,0.9);
+            background: rgba(102,126,234,0.15);
+            pointer-events: none;
+            z-index: 2000;
+        }
+        .context-menu {
+            position: fixed;
+            background: #fff;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            min-width: 180px;
+            padding: 6px 0;
+            z-index: 10000;
+            display: none;
+        }
+        .context-menu button {
+            width: 100%;
+            background: transparent;
+            border: none;
+            text-align: left;
+            padding: 10px 14px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .context-menu button:hover { background: #f8f9fa; }
+        /* Image wrapper with visible border and controls */
+        .img-wrap {
+            display: inline-block;
+            position: relative;
+            max-width: 100%;
+            border: 2px solid #cfd6e4; /* definite border */
+            border-radius: 8px;
+            padding: 6px;
+            margin: 10px 0;
+            background: #fff;
+        }
+        .img-delete {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #dc3545;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            z-index: 2;
+        }
+        .img-delete:hover { background: #c82333; }
 
         /* Prevent button text from being editable */
         .editor button,
@@ -752,10 +819,10 @@
     <div class="header">
         <div class="header-content">
             <div class="logo">
-                <i class="fas fa-edit"></i> PDF Editor
+                <i class="fas fa-edit"></i> Documenta Editor
             </div>
             <div class="header-actions">
-                <a href="/" class="btn secondary">
+                <a href="/projects" class="btn secondary">
                     <i class="fas fa-home"></i> Home
                 </a>
                 <button id="saveBtn" class="btn success">
@@ -867,7 +934,7 @@
                 <i class="fas fa-spinner fa-spin" style="font-size: 3rem; margin-bottom: 20px;"></i>
                 <h3>Loading Document...</h3>
             </div>
-            <div id="editor" class="editor" contenteditable="true" style="display: none;" data-contenteditable-toolbar="false"></div>
+            <div id="editor" class="editor" contenteditable="true" style="display: none; position: relative;" data-contenteditable-toolbar="false"></div>
         </div>
     </div>
 
@@ -876,6 +943,18 @@
     <script>
         // Get unique ID from URL
         const uniqueId = window.location.pathname.split('/').pop();
+        // Capture token from query (if present) and provide a fallback retriever
+        const urlToken = new URLSearchParams(location.search).get('token');
+        let editToken = urlToken || null;
+        async function ensureEditToken() {
+            if (editToken) return editToken;
+            try {
+                const res = await fetch(`/api/token/${uniqueId}`);
+                const data = await res.json();
+                if (data && data.token) editToken = data.token;
+            } catch (_) { /* ignore */ }
+            return editToken;
+        }
         
         // Get DOM elements
         const editor = document.getElementById('editor');
@@ -889,6 +968,13 @@
         let startShape = null;
         let shapeCounter = 0;
         let isInsertingShape = false;
+
+        // Multi-select state
+        let isSelectingArea = false;
+        let selectionStart = { x: 0, y: 0 };
+        let selectionRectEl = null;
+        let multiSelected = new Set();
+        let contextMenuEl = null;
 
         // Show status message
         function showStatus(message, type = 'info') {
@@ -984,6 +1070,24 @@
                 img.style.display = 'block';
                 img.style.maxWidth = '100%';
                 img.style.height = 'auto';
+
+                // Add delete button if missing
+                if (!wrap.querySelector('.img-delete')) {
+                    const del = document.createElement('button');
+                    del.className = 'img-delete';
+                    del.type = 'button';
+                    del.innerHTML = '<i class="fas fa-trash"></i>';
+                    del.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const container = del.closest('.img-wrap');
+                        if (container) {
+                            container.remove();
+                            showStatus('Image removed', 'success');
+                        }
+                    });
+                    wrap.appendChild(del);
+                }
                 // Add resizer handle if missing
                 if (!wrap.querySelector('.img-resize')) {
                     const handle = document.createElement('span');
@@ -1043,6 +1147,42 @@
 
         // Enhance any existing images after content load
         document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(enhanceImagesForEditing, 0);
+            ensureContextMenu();
+        });
+
+        // Insert pasted image with wrapper and border
+        function insertPastedImage(dataUrl) {
+            const html = `
+                <span class="img-wrap">
+                    <img src="${dataUrl}" alt="Pasted image" style="max-width:100%; height:auto; display:block;" />
+                    <button class="img-delete" type="button"><i class="fas fa-trash"></i></button>
+                </span>`;
+            insertHtmlIntoEditor(html);
+            requestAnimationFrame(() => { enhanceImagesForEditing(); });
+        }
+
+        // Handle paste events to detect images
+        editor.addEventListener('paste', (e) => {
+            const items = e.clipboardData && e.clipboardData.items;
+            if (items && items.length) {
+                for (const item of items) {
+                    if (item.type && item.type.indexOf('image') !== -1) {
+                        const file = item.getAsFile();
+                        if (file) {
+                            e.preventDefault();
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                                const dataUrl = reader.result;
+                                if (typeof dataUrl === 'string') insertPastedImage(dataUrl);
+                            };
+                            reader.readAsDataURL(file);
+                            return; // handle one image per paste
+                        }
+                    }
+                }
+            }
+            // For non-image paste, allow default then enhance after a tick
             setTimeout(enhanceImagesForEditing, 0);
         });
 
@@ -1651,6 +1791,8 @@
             saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
             try {
+                // Ensure we have an edit token
+                await ensureEditToken();
                 // Create the full HTML document
                 const htmlContent = `
 <!DOCTYPE html>
@@ -1833,7 +1975,7 @@
 </body>
 </html>`;
 
-                const response = await fetch(`/api/save/${uniqueId}`, {
+                const response = await fetch(`/api/save/${uniqueId}?token=${encodeURIComponent(editToken || '')}` , {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1917,6 +2059,153 @@
 
         // Load content when page loads
         loadContent();
+
+        // --- Selection marquee and context menu ---
+        function ensureContextMenu() {
+            if (contextMenuEl) return;
+            contextMenuEl = document.createElement('div');
+            contextMenuEl.className = 'context-menu';
+            contextMenuEl.innerHTML = `
+                <button data-action="delete-selected"><i class="fas fa-trash"></i> Delete Selected</button>
+                <button data-action="clear-selection"><i class="fas fa-times"></i> Clear Selection</button>
+            `;
+            document.body.appendChild(contextMenuEl);
+            contextMenuEl.addEventListener('click', (e) => {
+                const btn = e.target.closest('button');
+                if (!btn) return;
+                const action = btn.getAttribute('data-action');
+                if (action === 'delete-selected') {
+                    deleteSelectedNodes();
+                } else if (action === 'clear-selection') {
+                    clearMultiSelection();
+                }
+                hideContextMenu();
+            });
+            document.addEventListener('click', (e) => {
+                if (contextMenuEl && contextMenuEl.style.display === 'block') hideContextMenu();
+            });
+        }
+
+        function showContextMenu(x, y) {
+            ensureContextMenu();
+            contextMenuEl.style.left = `${x}px`;
+            contextMenuEl.style.top = `${y}px`;
+            contextMenuEl.style.display = 'block';
+        }
+        function hideContextMenu() { if (contextMenuEl) contextMenuEl.style.display = 'none'; }
+
+        function beginSelection(x, y) {
+            isSelectingArea = true;
+            selectionStart = { x, y };
+            selectionRectEl = document.createElement('div');
+            selectionRectEl.className = 'selection-rect';
+            selectionRectEl.style.left = `${x}px`;
+            selectionRectEl.style.top = `${y}px`;
+            selectionRectEl.style.width = '0px';
+            selectionRectEl.style.height = '0px';
+            document.body.appendChild(selectionRectEl);
+        }
+
+        function updateSelection(x, y) {
+            if (!isSelectingArea || !selectionRectEl) return;
+            const minX = Math.min(selectionStart.x, x);
+            const minY = Math.min(selectionStart.y, y);
+            const w = Math.abs(x - selectionStart.x);
+            const h = Math.abs(y - selectionStart.y);
+            selectionRectEl.style.left = `${minX}px`;
+            selectionRectEl.style.top = `${minY}px`;
+            selectionRectEl.style.width = `${w}px`;
+            selectionRectEl.style.height = `${h}px`;
+            markElementsInsideRect(minX, minY, w, h);
+        }
+
+        function endSelection() {
+            isSelectingArea = false;
+            if (selectionRectEl) {
+                selectionRectEl.remove();
+                selectionRectEl = null;
+            }
+        }
+
+        function elementRect(el) {
+            const r = el.getBoundingClientRect();
+            return { left: r.left + window.scrollX, top: r.top + window.scrollY, right: r.right + window.scrollX, bottom: r.bottom + window.scrollY };
+        }
+
+        function rectsIntersect(a, b) {
+            return !(b.left > a.right || b.right < a.left || b.top > a.bottom || b.bottom < a.top);
+        }
+
+        function markElementsInsideRect(x, y, w, h) {
+            const marquee = { left: x, top: y, right: x + w, bottom: y + h };
+            // Candidate nodes: images wrappers, flowchart shapes/containers, paragraphs, tables
+            const candidates = editor.querySelectorAll('.img-wrap, .flowchart-shape, .flowchart-container, table, p, h1, h2, h3, h4, h5, h6, li');
+            multiSelected.forEach(el => el.classList.remove('multi-selected'));
+            multiSelected.clear();
+            candidates.forEach(el => {
+                if (!el.getBoundingClientRect) return;
+                const r = elementRect(el);
+                if (rectsIntersect(marquee, r)) {
+                    el.classList.add('multi-selected');
+                    multiSelected.add(el);
+                }
+            });
+        }
+
+        function clearMultiSelection() {
+            multiSelected.forEach(el => el.classList.remove('multi-selected'));
+            multiSelected.clear();
+        }
+
+        function deleteSelectedNodes() {
+            if (multiSelected.size === 0) return;
+            // Prefer removing higher-level containers to avoid double-removal
+            const toRemove = Array.from(multiSelected).sort((a,b) => {
+                // deeper nodes later
+                const da = depth(a), db = depth(b);
+                return da - db;
+            });
+            const removed = new Set();
+            toRemove.forEach(node => {
+                if ([...removed].some(r => r.contains(node))) return;
+                // If a flowchart shape, remove via jsPlumb if possible
+                const flowchart = node.closest && node.closest('.flowchart-container');
+                if (node.classList && node.classList.contains('flowchart-shape') && flowchart && flowchart._jsp) {
+                    try { flowchart._jsp.remove(node); } catch (_) { node.remove(); }
+                } else {
+                    node.remove();
+                }
+                removed.add(node);
+            });
+            clearMultiSelection();
+            showStatus('Selected items deleted', 'success');
+        }
+
+        function depth(el) { let d = 0, n = el; while (n) { d++; n = n.parentElement; } return d; }
+
+        // Mouse interactions for marquee selection in editor area
+        editor.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return; // left only for marquee
+            const isInToolbar = e.target.closest && e.target.closest('.toolbar');
+            const isOnControl = e.target.closest && (e.target.closest('.flowchart-toolbar') || e.target.closest('.img-toolbar') || e.target.closest('.img-resize') || e.target.closest('.flowchart-control-btn'));
+            if (isInToolbar || isOnControl) return;
+            // Start selection when clicking on empty space or outside editable text nodes
+            const isInsideEditor = editor.contains(e.target);
+            if (!isInsideEditor) return;
+            beginSelection(e.pageX, e.pageY);
+            clearMultiSelection();
+        });
+        document.addEventListener('mousemove', (e) => { if (isSelectingArea) updateSelection(e.pageX, e.pageY); });
+        document.addEventListener('mouseup', () => { if (isSelectingArea) endSelection(); });
+
+        // Context menu for multi-selected
+        editor.addEventListener('contextmenu', (e) => {
+            const hasSelection = multiSelected.size > 0;
+            if (hasSelection) {
+                e.preventDefault();
+                showContextMenu(e.clientX, e.clientY);
+            }
+        });
 
         // --- Paste Flowchart Modal logic ---
         let pastedImageDataURL = null;
@@ -2156,6 +2445,14 @@
 
         // Ensure images with embedded GoJS model become re-editable
         function postProcessGoJS() {
+            // Normalize any legacy Unlock buttons to the current Edit button
+            editor.querySelectorAll('.gojs-unlock-btn').forEach(btn => {
+                try {
+                    btn.classList.remove('gojs-unlock-btn');
+                    btn.classList.add('gojs-edit-btn');
+                    btn.textContent = 'Edit';
+                } catch (_) { /* ignore */ }
+            });
             // 1) Wrap any image with data-gojs-model into the expected wrapper and add edit button
             editor.querySelectorAll('img[data-gojs-model]').forEach(img => {
                 const modelB64 = img.getAttribute('data-gojs-model');
@@ -2384,7 +2681,8 @@
         function initializeGoJSInContainer(container) {
             if (!window.go || !container) return;
             const diagramDiv = container.querySelector(':scope > .flowchart-canvas > div[id^="gojs-"]:not([id$="-palette"])');
-            const paletteDiv = null; // palette removed per requirements
+            // Support both cases: with palette (when unlocking/re-editing) or without (quick insert)
+            const paletteDiv = container.querySelector(':scope > .flowchart-canvas > div[id$="-palette"]');
             if (!diagramDiv) return;
             const modelEl = container.querySelector(':scope > textarea.gojs-model');
             let modelData = { nodeDataArray: [], linkDataArray: [] };
@@ -2486,83 +2784,105 @@
                 if (diagram.isModified) syncModelToDom();
             });
 
-            // Toolbar actions (keep toolbar visible; do not hide on interactions)
-            container.querySelectorAll('.flowchart-toolbar-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const action = btn.dataset.action;
-                    console.log('[GoJS] toolbar action', action);
-                    if (action === 'clear') {
-                        diagram.model = new go.GraphLinksModel([], []);
-                        syncModelToDom();
-                    } else if (action === 'export-png') {
-                        const png = diagram.makeImageData({ background: 'white' });
-                        document.execCommand('insertImage', false, png);
-                    } else if (action === 'increase-height' || action === 'decrease-height') {
-                        const delta = action === 'increase-height' ? 120 : -120;
-                        const current = parseInt(diagramDiv.style.height || '340', 10) || 340;
-                        const newH = Math.max(240, current + delta);
-                        diagramDiv.style.height = newH + 'px';
-                        // Expand wrapper min-height too
-                        const wrap = container;
-                        const wrapMin = parseInt((wrap.style.minHeight || '420').replace('px',''), 10) || 420;
-                        wrap.style.minHeight = Math.max(360, wrapMin + delta) + 'px';
-                    } else if (action === 'done-image') {
-                        // Export and replace the editor block with a static image, but embed model JSON for re-edit
-                        const png = diagram.makeImageData({ background: 'white', scale: 2 });
-                        const modelJson = diagram.model.toJson();
-                        const wrapper = document.createElement('span');
-                        wrapper.className = 'gojs-export-wrapper';
-                        wrapper.setAttribute('data-gojs-model', btoa(unescape(encodeURIComponent(modelJson))));
-                        wrapper.innerHTML = `<img src="${png}" alt="Flowchart" style="max-width:100%; height:auto; border-radius:6px; margin: 10px 0;" />` +
-                                            `<button class="gojs-edit-btn" type="button">Edit</button>`;
-                        container.parentNode.insertBefore(wrapper, container);
-                        container.remove();
-                        ensureTrailingParagraph();
-                        placeCaretAtEnd();
-                    } else if (action === 'done-lock') {
-                        // Remove palette and toolbar; keep diagram vector and lock editing
-                        const toolbarEl = container.querySelector('.flowchart-toolbar');
-                        if (toolbarEl) toolbarEl.remove();
-                        if (paletteDiv && paletteDiv.parentNode) paletteDiv.remove();
-                        // Stretch diagram to full width
-                        diagramDiv.style.width = '100%';
-                        // Lock editing
-                        diagram.isReadOnly = true;
-                        // Add an Edit overlay button to allow re-editing later
-                        if (!container.querySelector('.gojs-edit-btn')) {
-                            const editBtn = document.createElement('button');
-                            editBtn.type = 'button';
-                            editBtn.className = 'gojs-edit-btn';
-                            editBtn.textContent = 'Edit';
-                            container.appendChild(editBtn);
-                        }
-                        showStatus('Flowchart locked. You can continue editing the document.', 'success');
-                    }
-                });
-            });
+            // Ensure toolbar is visible initially
+            const initialToolbar = container.querySelector('.flowchart-toolbar');
+            if (initialToolbar) initialToolbar.classList.add('active');
 
-            // Ensure toolbar remains active after any diagram gesture
-            const toolbar = container.querySelector('.flowchart-toolbar');
-            if (toolbar) {
-                const keepActive = () => toolbar.classList.add('active');
-                diagram.addDiagramListener('InitialLayoutCompleted', keepActive);
-                diagram.addDiagramListener('ObjectSingleClicked', keepActive);
-                diagram.addDiagramListener('SelectionMoved', keepActive);
-                diagram.addDiagramListener('LinkDrawn', keepActive);
-                diagram.addDiagramListener('LinkRelinked', keepActive);
-                diagram.addDiagramListener('BackgroundSingleClicked', keepActive);
+            // Bind toolbar actions (idempotent)
+            function bindGoJSToolbarActions() {
+                container.querySelectorAll('.flowchart-toolbar-btn').forEach(btn => {
+                    if (btn.getAttribute('data-gojs-bound') === '1') return;
+                    btn.setAttribute('data-gojs-bound', '1');
+                    btn.addEventListener('click', async () => {
+                        const action = btn.dataset.action;
+                        console.log('[GoJS] toolbar action', action);
+                        if (action === 'clear') {
+                            diagram.model = new go.GraphLinksModel([], []);
+                            syncModelToDom();
+                        } else if (action === 'export-png') {
+                            const png = diagram.makeImageData({ background: 'white' });
+                            document.execCommand('insertImage', false, png);
+                        } else if (action === 'increase-height' || action === 'decrease-height') {
+                            const delta = action === 'increase-height' ? 120 : -120;
+                            const current = parseInt(diagramDiv.style.height || '340', 10) || 340;
+                            const newH = Math.max(240, current + delta);
+                            diagramDiv.style.height = newH + 'px';
+                            // Expand wrapper min-height too
+                            const wrap = container;
+                            const wrapMin = parseInt((wrap.style.minHeight || '420').replace('px',''), 10) || 420;
+                            wrap.style.minHeight = Math.max(360, wrapMin + delta) + 'px';
+                        } else if (action === 'done-image') {
+                            // Export and replace the editor block with a static image, but embed model JSON for re-edit
+                            const png = diagram.makeImageData({ background: 'white', scale: 2 });
+                            const modelJson = diagram.model.toJson();
+                            const wrapper = document.createElement('span');
+                            wrapper.className = 'gojs-export-wrapper';
+                            wrapper.setAttribute('data-gojs-model', btoa(unescape(encodeURIComponent(modelJson))));
+                            wrapper.innerHTML = `<img src="${png}" alt="Flowchart" style=\"max-width:100%; height:auto; border-radius:6px; margin: 10px 0;\" />` +
+                                                `<button class=\"gojs-edit-btn\" type=\"button\">Edit</button>`;
+                            container.parentNode.insertBefore(wrapper, container);
+                            container.remove();
+                            ensureTrailingParagraph();
+                            placeCaretAtEnd();
+                        } else if (action === 'done-lock') {
+                            // Remove palette and toolbar; keep diagram vector and lock editing
+                            const toolbarEl = container.querySelector('.flowchart-toolbar');
+                            if (toolbarEl) toolbarEl.remove();
+                            if (paletteDiv && paletteDiv.parentNode) paletteDiv.remove();
+                            // Stretch diagram to full width
+                            diagramDiv.style.width = '100%';
+                            // Lock editing
+                            diagram.isReadOnly = true;
+                            // Add an Edit overlay button to allow re-editing later
+                            if (!container.querySelector('.gojs-edit-btn')) {
+                                const editBtn = document.createElement('button');
+                                editBtn.type = 'button';
+                                editBtn.className = 'gojs-edit-btn';
+                                editBtn.textContent = 'Edit';
+                                container.appendChild(editBtn);
+                            }
+                            showStatus('Flowchart locked. You can continue editing the document.', 'success');
+                        }
+                    });
+                });
             }
+            bindGoJSToolbarActions();
+
+            // Ensure toolbar remains active and re-create if missing
+            let toolbar = container.querySelector('.flowchart-toolbar');
+            if (!toolbar) {
+                toolbar = document.createElement('div');
+                toolbar.className = 'flowchart-toolbar active';
+                toolbar.innerHTML = `
+                    <div class="flowchart-toolbar-group">
+                        <button class="flowchart-toolbar-btn" data-action="clear"><i class="fas fa-trash"></i> Clear</button>
+                        <button class="flowchart-toolbar-btn" data-action="export-png"><i class="fas fa-file-export"></i> Export PNG</button>
+                        <button class="flowchart-toolbar-btn" data-action="increase-height" title="Increase height"><i class="fas fa-up-down"></i> Taller</button>
+                        <button class="flowchart-toolbar-btn" data-action="decrease-height" title="Decrease height"><i class="fas fa-compress-alt"></i> Shorter</button>
+                        <button class="flowchart-toolbar-btn" data-action="done-image" title="Insert as image and finish"><i class="fas fa-image"></i> Done (Image)</button>
+                        <button class="flowchart-toolbar-btn" data-action="done-lock" title="Lock and keep vector"><i class="fas fa-lock"></i> Done (Lock)</button>
+                    </div>`;
+                container.insertBefore(toolbar, container.firstChild);
+                bindGoJSToolbarActions();
+            }
+            const keepActive = () => toolbar && toolbar.classList.add('active');
+            diagram.addDiagramListener('InitialLayoutCompleted', keepActive);
+            diagram.addDiagramListener('ObjectSingleClicked', keepActive);
+            diagram.addDiagramListener('SelectionMoved', keepActive);
+            diagram.addDiagramListener('LinkDrawn', keepActive);
+            diagram.addDiagramListener('LinkRelinked', keepActive);
+            diagram.addDiagramListener('BackgroundSingleClicked', keepActive);
 
             // Resize handle logic
             const handle = container.querySelector('.resize-handle');
             if (handle) {
                 let startY = 0;
                 let startH = 0;
-                const onMove = (ev) => {
+                    const onMove = (ev) => {
                     const dy = ev.clientY - startY;
                     const newH = Math.max(240, startH + dy);
                     diagramDiv.style.height = newH + 'px';
-                    paletteDiv.style.height = newH + 'px';
+                        if (paletteDiv) paletteDiv.style.height = newH + 'px';
                     const wrap = container;
                     const wrapMin = parseInt((wrap.style.minHeight || '420').replace('px',''), 10) || 420;
                     wrap.style.minHeight = Math.max(360, newH + 80) + 'px';

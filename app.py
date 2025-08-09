@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, session
 import os
 from werkzeug.utils import secure_filename
 from pdf_to_webpage import PDFToHTMLConverter
@@ -11,7 +11,9 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['OUTPUT_FOLDER'] = 'outputs'
 app.config['TOKENS_FILE'] = os.path.join(app.config['OUTPUT_FOLDER'], 'tokens.json')
+app.config['USERS_FILE'] = os.path.join(app.config['OUTPUT_FOLDER'], 'users.json')
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-me')
 CONVERSION_ENABLED = False  # Disable PDF extraction/conversion; use as formatting tool only
 
 # Ensure directories exist
@@ -19,6 +21,35 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
 
 ALLOWED_EXTENSIONS = {'pdf'}
+# --- Simple user store (file-based) ---
+def _load_users():
+    try:
+        if os.path.exists(app.config['USERS_FILE']):
+            with open(app.config['USERS_FILE'], 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+def _save_users(users):
+    os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
+    with open(app.config['USERS_FILE'], 'w', encoding='utf-8') as f:
+        json.dump(users, f)
+
+def _valid_email(email: str) -> bool:
+    return bool(email) and re.match(r'^\S+@\S+\.\S+$', email)
+
+def _current_user_email():
+    return session.get('user_email')
+
+def _is_authenticated() -> bool:
+    return bool(_current_user_email())
+
+def _require_auth():
+    if not _is_authenticated():
+        return redirect(url_for('signin', next=request.path))
+    return None
+
 
 # Simple token store persisted to a JSON file
 def _load_tokens():
@@ -54,7 +85,84 @@ def allowed_file(filename):
 
 @app.route('/')
 def index():
+    # Marketing main page
+    return render_template('website_home.html')
+
+@app.route('/projects')
+def projects():
+    # Auth-adaptive projects page
     return render_template('index.html')
+
+@app.route('/site')
+def site_home():
+    return render_template('website_home.html')
+
+# --- Auth routes ---
+from werkzeug.security import generate_password_hash, check_password_hash
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        name = (request.form.get('name') or '').strip()
+        email = (request.form.get('email') or '').strip().lower()
+        password = request.form.get('password') or ''
+        confirm = request.form.get('confirm') or ''
+        error = None
+        if not name or not email or not password:
+            error = 'All fields are required'
+        elif not _valid_email(email):
+            error = 'Invalid email address'
+        elif len(password) < 6:
+            error = 'Password must be at least 6 characters'
+        elif password != confirm:
+            error = 'Passwords do not match'
+        users = _load_users()
+        if not error and email in users:
+            error = 'An account with that email already exists'
+        if error:
+            return render_template('signup.html', error=error, name=name, email=email)
+        users[email] = {
+            'name': name,
+            'email': email,
+            'password_hash': generate_password_hash(password),
+            'created_at': datetime.utcnow().isoformat(),
+            'plan': 'Free',
+        }
+        _save_users(users)
+        session['user_email'] = email
+        return redirect(url_for('index'))
+    return render_template('signup.html')
+
+@app.route('/signin', methods=['GET', 'POST'])
+def signin():
+    if request.method == 'POST':
+        email = (request.form.get('email') or '').strip().lower()
+        password = request.form.get('password') or ''
+        users = _load_users()
+        user = users.get(email)
+        if not user or not check_password_hash(user.get('password_hash', ''), password):
+            return render_template('signin.html', error='Invalid email or password', email=email)
+        session['user_email'] = email
+        next_url = request.args.get('next')
+        return redirect(next_url or url_for('projects'))
+    return render_template('signin.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('signin'))
+
+@app.route('/api/me')
+def api_me():
+    users = _load_users()
+    email = _current_user_email()
+    user = users.get(email) if email else None
+    return jsonify({
+        'authenticated': bool(user),
+        'email': email,
+        'name': (user or {}).get('name'),
+        'plan': (user or {}).get('plan', 'Free'),
+    })
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -105,6 +213,10 @@ def view_converted(unique_id):
 
 @app.route('/edit/<unique_id>')
 def edit_converted(unique_id):
+    # Require authentication to edit
+    auth_resp = _require_auth()
+    if auth_resp:
+        return auth_resp
     html_file = f"{unique_id}_converted.html"
     html_path = os.path.join(app.config['OUTPUT_FOLDER'], html_file)
     
@@ -132,6 +244,10 @@ def get_content(unique_id):
 
 @app.route('/api/save/<unique_id>', methods=['POST'])
 def save_content(unique_id):
+    # Require authentication to save
+    auth_resp = _require_auth()
+    if auth_resp:
+        return auth_resp
     token = request.args.get('token')
     if not _verify_token(unique_id, token):
         return jsonify({'error': 'Forbidden'}), 403
@@ -151,6 +267,10 @@ def save_content(unique_id):
 
 @app.route('/download/<unique_id>')
 def download_file(unique_id):
+    # Require authentication to download
+    auth_resp = _require_auth()
+    if auth_resp:
+        return auth_resp
     token = request.args.get('token')
     if not _verify_token(unique_id, token):
         return "Forbidden: missing or invalid token", 403
@@ -164,6 +284,10 @@ def download_file(unique_id):
 
 @app.route('/api/delete/<unique_id>', methods=['DELETE'])
 def delete_file(unique_id):
+    # Require authentication to delete
+    auth_resp = _require_auth()
+    if auth_resp:
+        return auth_resp
     token = request.args.get('token')
     if not _verify_token(unique_id, token):
         return jsonify({'error': 'Forbidden'}), 403
@@ -179,6 +303,10 @@ def delete_file(unique_id):
 
 @app.route('/new')
 def new_document():
+    # Require authentication to create
+    auth_resp = _require_auth()
+    if auth_resp:
+        return auth_resp
     """Create a new blank document and redirect to the editor."""
     unique_id = str(uuid.uuid4())
     html_file = f"{unique_id}_converted.html"
@@ -222,6 +350,10 @@ def new_document():
 
 @app.route('/api/list_outputs')
 def list_outputs():
+    # Require authentication to list user documents (basic gating)
+    auth_resp = _require_auth()
+    if auth_resp:
+        return auth_resp
     outputs_dir = app.config['OUTPUT_FOLDER']
     if not os.path.exists(outputs_dir):
         return jsonify({'documents': []})
@@ -267,6 +399,10 @@ def list_outputs():
 
 @app.route('/api/token/<unique_id>')
 def get_token(unique_id):
+    # Require authentication to obtain edit/download token
+    auth_resp = _require_auth()
+    if auth_resp:
+        return auth_resp
     html_file = f"{unique_id}_converted.html"
     html_path = os.path.join(app.config['OUTPUT_FOLDER'], html_file)
     if not os.path.exists(html_path):

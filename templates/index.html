@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>iDOC — iCreations Documentation Tool</title>
+    <title>Documenta — Professional Documentation Tool</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -16,80 +16,93 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
-        .container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            padding: 40px;
-            max-width: 900px;
-            width: 90%;
+        /* Page header */
+        .header { 
+            position: sticky; 
+            top: 0; 
+            z-index: 1000; 
+            width: 100%; 
+            background: #ffffff; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08); 
+        }
+        .header-content { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+        }
+        .brand { 
+            display: flex; 
+            align-items: center; 
+            gap: 15px; 
+            color: #667eea; 
+            font-weight: 700; 
+            text-decoration: none; 
+            font-size: 1.5rem;
+        }
+        .brand i {
+            font-size: 2rem;
+        }
+        .user-header { 
+            display: none; 
+            align-items: center; 
+            gap: 12px; 
+        }
+        .avatar { 
+            width: 40px; 
+            height: 40px; 
+            border-radius: 50%; 
+            background: #e9ecff; 
+            color: #667eea; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-weight: 700; 
+            font-size: 1.2rem;
+        }
+        .user-meta { 
+            line-height: 1.1; 
+        }
+        .user-name { 
+            font-weight: 700; 
+            color: #2c3e50; 
+        }
+        .user-plan { 
+            font-size: 12px; 
+            color: #6c757d; 
+        }
+        .btn.small { 
+            padding: 8px 16px; 
+            font-size: 0.9rem; 
+            border-radius: 8px; 
+        }
+
+        /* Main content */
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .page-title {
             text-align: center;
+            margin-bottom: 40px;
         }
 
-        .logo {
+        .page-title h1 {
+            color: #ffffff;
             font-size: 3rem;
-            color: #667eea;
-            margin-bottom: 20px;
-        }
-
-        h1 {
-            color: #2c3e50;
             margin-bottom: 10px;
-            font-size: 2.5rem;
             font-weight: 600;
         }
 
-        .subtitle {
-            color: #7f8c8d;
-            margin-bottom: 40px;
-            font-size: 1.1rem;
-        }
-
-        .upload-area {
-            border: 3px dashed #bdc3c7;
-            border-radius: 15px;
-            padding: 60px 20px;
-            margin-bottom: 30px;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            position: relative;
-        }
-
-        .upload-area:hover {
-            border-color: #667eea;
-            background: #f8f9ff;
-        }
-
-        .upload-area.dragover {
-            border-color: #667eea;
-            background: #f0f4ff;
-            transform: scale(1.02);
-        }
-
-        .upload-icon {
-            font-size: 4rem;
-            color: #bdc3c7;
-            margin-bottom: 20px;
-        }
-
-        .upload-text {
-            font-size: 1.2rem;
-            color: #2c3e50;
-            margin-bottom: 10px;
-        }
-
-        .upload-hint {
-            color: #7f8c8d;
-            font-size: 0.9rem;
-        }
-
-        #file-input {
-            display: none;
+        .page-title .subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.3rem;
         }
 
         .btn {
@@ -103,6 +116,8 @@
             cursor: pointer;
             transition: all 0.3s ease;
             margin: 10px;
+            text-decoration: none;
+            display: inline-block;
         }
 
         .btn:hover {
@@ -114,6 +129,32 @@
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
+        }
+
+        .btn.secondary {
+            background: #3498db;
+        }
+
+        .btn.secondary:hover {
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .create-section {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .btn.create-btn {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn.create-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
         }
 
         .progress {
@@ -157,99 +198,104 @@
             margin-top: 30px;
         }
 
-        .open-existing {
-            margin-top: 30px;
-            text-align: left;
+        /* Projects section */
+        .projects { 
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
         }
-        .open-existing h3 {
+        .projects h3 {
             color: #2c3e50;
-            margin-bottom: 10px;
-        }
-        .doc-list {
-            max-height: 220px;
-            overflow: auto;
-            border: 1px solid #ecf0f1;
-            border-radius: 10px;
-            padding: 10px;
-            background: #fafafa;
-        }
-        .doc-item {
+            margin-bottom: 20px;
+            font-size: 1.5rem;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 10px;
-            border-bottom: 1px solid #ecf0f1;
+            gap: 10px;
         }
-        .doc-item:last-child { border-bottom: none; }
-        .doc-meta { color: #7f8c8d; font-size: 0.85rem; }
-        .doc-actions a { margin-left: 8px; }
-
-        .action-btn {
-            background: #27ae60;
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin: 5px;
-            text-decoration: none;
-            display: inline-block;
+        .project-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+            gap: 20px; 
         }
-
-        .action-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(39, 174, 96, 0.3);
+        .project-card { 
+            background: #f8f9ff; 
+            border: 1px solid #ecf0f1; 
+            border-radius: 14px; 
+            text-align: left; 
+            overflow: hidden; 
+            transition: transform 0.2s ease, box-shadow 0.2s ease; 
+            cursor: pointer; 
         }
-
-        .action-btn.secondary {
-            background: #3498db;
+        .project-card:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08); 
         }
-
-        .action-btn.secondary:hover {
-            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        .project-thumb { 
+            height: 120px; 
+            background: linear-gradient(135deg, #f2f5ff, #e9ecff); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: #667eea; 
+            font-size: 2rem; 
         }
-
-        /* Projects grid */
-        .projects { margin-top: 30px; text-align: left; }
-        .project-grid { margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
-        .project-card { background: #f8f9ff; border: 1px solid #ecf0f1; border-radius: 14px; text-align: left; overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease; cursor: pointer; }
-        .project-card:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.08); }
-        .project-thumb { height: 120px; background: linear-gradient(135deg, #f2f5ff, #e9ecff); display: flex; align-items: center; justify-content: center; color: #667eea; font-size: 2rem; }
-        .project-body { padding: 12px 14px; }
-        .project-title { font-weight: 600; color: #2c3e50; margin-bottom: 6px; }
-        .project-meta { color: #7f8c8d; font-size: 0.85rem; }
-        .project-actions { display: none; }
+        .project-body { 
+            padding: 16px; 
+        }
+        .project-title { 
+            font-weight: 600; 
+            color: #2c3e50; 
+            margin-bottom: 8px; 
+            font-size: 1.1rem;
+        }
+        .project-meta { 
+            color: #7f8c8d; 
+            font-size: 0.9rem; 
+        }
 
         @media (max-width: 768px) {
-            .container {
-                padding: 30px 20px;
+            .header-content {
+                padding: 15px;
+            }
+            
+            .main-content {
+                padding: 20px 15px;
             }
 
-            h1 {
+            .page-title h1 {
                 font-size: 2rem;
             }
 
-            .upload-area {
-                padding: 40px 20px;
-            }
-
-            .upload-icon {
-                font-size: 3rem;
+            .project-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="logo"><i class="fas fa-file-alt"></i></div>
-        <h1>iDOC</h1>
-        <p class="subtitle">iCreations Documentation Tool</p>
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="brand"><i class="fas fa-file-alt"></i> Documenta</a>
+            <div class="user-header" id="userHeader">
+                <div class="avatar" id="hdrAvatar">U</div>
+                <div class="user-meta">
+                    <div class="user-name" id="hdrName">User</div>
+                    <div class="user-plan" id="hdrPlan">Free Plan</div>
+                </div>
+                <a id="hdrLogout" class="btn secondary small" href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </div>
+    </header>
 
-        <div>
-            <a class="btn" href="/new" title="Create new project">
+    <div class="main-content">
+        <div class="page-title">
+            <h1>Documenta</h1>
+            <p class="subtitle">Professional Documentation Tool</p>
+        </div>
+
+        <div class="create-section">
+            <a class="btn create-btn" href="/new" title="Create new project" id="createBtn">
                 <i class="fas fa-plus-circle"></i> Create New Project
             </a>
         </div>
@@ -260,27 +306,43 @@
 
         <div class="status" id="status"></div>
 
-        <div class="action-buttons" id="action-buttons">
-            <a href="#" class="action-btn" id="view-btn">
-                <i class="fas fa-eye"></i> View
-            </a>
-            <a href="#" class="action-btn secondary" id="edit-btn">
-                <i class="fas fa-edit"></i> Edit
-            </a>
-            <a href="#" class="action-btn secondary" id="download-btn">
-                <i class="fas fa-download"></i> Download
-            </a>
-        </div>
+        <div class="action-buttons" id="action-buttons" style="display:none;"></div>
 
         <div class="projects">
-            <div style="display:flex; align-items:center; justify-content:space-between;">
-                <h3 style="color:#2c3e50;"><i class="fas fa-history"></i> Recent Projects</h3>
-            </div>
+            <h3><i class="fas fa-history"></i> Recent Projects</h3>
             <div id="project-grid" class="project-grid"></div>
         </div>
     </div>
 
     <script>
+        // Hide Create button for readonly sessions
+        (function(){
+            try {
+                if (sessionStorage.getItem('readonlyMode') === '1') {
+                    const cc = document.querySelector('.create-section');
+                    if (cc) cc.style.display = 'none';
+                }
+            } catch (_) {}
+        })();
+
+        // Populate page header user info when logged in
+        (async function(){
+            try {
+                const res = await fetch('/api/me');
+                const me = await res.json();
+                if (me && me.authenticated) {
+                    const hdr = document.getElementById('userHeader');
+                    const nameEl = document.getElementById('hdrName');
+                    const planEl = document.getElementById('hdrPlan');
+                    const avatar = document.getElementById('hdrAvatar');
+                    if (nameEl) nameEl.textContent = me.name || me.email || 'User';
+                    if (planEl) planEl.textContent = (me.plan || 'Free') + ' Plan';
+                    if (avatar) avatar.textContent = ((me.name || me.email || 'U').trim()[0] || 'U').toUpperCase();
+                    if (hdr) hdr.style.display = 'flex';
+                }
+            } catch (_) {}
+        })();
+
         const progress = document.getElementById('progress');
         const progressBar = document.getElementById('progress-bar');
         const status = document.getElementById('status');
@@ -313,7 +375,7 @@
                     return;
                 }
                 projectGrid.innerHTML = docs.map(d => `
-                    <div class="project-card" onclick="window.location.href='/view/${d.unique_id}'" tabindex="0" role="button" aria-label="Open ${ (d.title || d.filename).replace(/"/g,'&quot;') }">
+                    <div class="project-card" data-uid="${d.unique_id}" tabindex="0" role="button" aria-label="Open ${(d.title || d.filename).replace(/"/g,'&quot;')}">
                         <div class="project-thumb"><i class="fas fa-file-alt"></i></div>
                         <div class="project-body">
                             <div class="project-title">${(d.title || d.filename).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
@@ -321,6 +383,17 @@
                         </div>
                     </div>
                 `).join('');
+
+                // Click to open in read-only viewer by default
+                projectGrid.querySelectorAll('.project-card').forEach(card => {
+                    card.addEventListener('click', () => {
+                        const uid = card.getAttribute('data-uid');
+                        window.location.href = `/view/${uid}`;
+                    });
+                    card.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
+                    });
+                });
             } catch (e) {
                 projectGrid.innerHTML = '<div class="project-meta">Failed to load projects</div>';
             }

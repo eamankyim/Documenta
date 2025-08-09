@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Documenta — Professional Documentation Tool</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f1221;
+      --surface: #12162a;
+      --text: #e8ecf3;
+      --muted: #98a2b3;
+      --primary: #667eea;
+      --primary-2: #764ba2;
+      --border: #1f2541;
+      --card: #141935;
+      --accent: #22c55e;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body { margin:0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: var(--text); background: radial-gradient(1400px 600px at 20% -10%, rgba(102,126,234,0.18), transparent), radial-gradient(1200px 500px at 90% -20%, rgba(118,75,162,0.18), transparent), var(--bg); }
+    a { color: inherit; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+
+    /* Header */
+    .header { position: sticky; top:0; z-index:1000; backdrop-filter: saturate(140%) blur(8px); background: linear-gradient(180deg, rgba(18,22,42,0.9), rgba(18,22,42,0.6)); border-bottom: 1px solid var(--border); }
+    .nav { display:flex; align-items:center; justify-content:space-between; padding: 14px 0; }
+    .brand { display:flex; align-items:center; gap:10px; color: #c7d2fe; font-weight: 800; letter-spacing: 0.3px; text-decoration: none; }
+    .brand i { color: #a5b4fc; }
+    .nav-links { display:flex; gap: 18px; align-items:center; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-weight: 600; }
+    .nav-links a:hover { color: #c7d2fe; }
+    .nav-cta { background: linear-gradient(135deg, var(--primary), var(--primary-2)); color:#fff; padding:10px 16px; border-radius:10px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:8px; }
+    .nav-toggle { display:none; background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 8px 10px; }
+
+    /* Mobile nav */
+    @media (max-width: 860px) {
+      .nav-links { display: none; position: absolute; right: 20px; top: 62px; background: var(--surface); border:1px solid var(--border); border-radius: 12px; padding: 10px; flex-direction: column; min-width: 200px; }
+      .nav-links.show { display:flex; }
+      .nav-toggle { display:inline-flex; }
+    }
+
+    /* Hero */
+    .hero-wrap { position: relative; overflow: hidden; border-bottom: 1px solid var(--border); }
+    .glow { position:absolute; inset:-40% -20% auto auto; width: 65vw; height: 65vw; background: radial-gradient(closest-side, rgba(102,126,234,0.20), transparent); filter: blur(20px); pointer-events: none; }
+    .hero { display:grid; grid-template-columns: 1.1fr 0.9fr; gap:36px; align-items:center; min-height: 72vh; }
+    .hero h1 { font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1.15; margin: 0 0 12px; letter-spacing: 0.2px; }
+    .lead { color: var(--muted); font-size: 1.05rem; margin-bottom: 24px; }
+    .hero-actions { display:flex; gap: 12px; flex-wrap: wrap; }
+    .btn { background: linear-gradient(135deg, var(--primary), var(--primary-2)); color:#fff; border:none; border-radius:12px; padding:12px 18px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:8px; box-shadow: 0 10px 24px rgba(102,126,234,0.22); }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 16px 34px rgba(102,126,234,0.28); }
+    .btn.secondary { background: #1d223d; border: 1px solid var(--border); box-shadow: none; }
+    .mock { background: linear-gradient(135deg, #1a1f3a, #161b33); border:1px solid var(--border); border-radius:16px; height:360px; display:flex; align-items:center; justify-content:center; color:#a5b4fc; font-size:1.4rem; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02); }
+    @media (max-width: 900px) { .hero { grid-template-columns: 1fr; padding: 24px 0 42px; } .mock { height: 280px; } }
+
+    /* Sections */
+    .section { padding: 56px 0; }
+    .section .container > h2 { margin:0 0 10px; font-size: 1.6rem; }
+    .section .subtitle { color: var(--muted); margin: 0 0 20px; }
+    .cards { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px; }
+    .card { background: var(--surface); border:1px solid var(--border); border-radius: 14px; padding: 18px; transition: transform .2s ease, box-shadow .2s ease, border-color .2s; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 14px 36px rgba(0,0,0,0.20); border-color: #2a315e; }
+    .card h3 { margin:0 0 6px; font-size:1.05rem; color:#c7d2fe; }
+    .card p { margin:0; color: var(--muted); }
+
+    /* How it works */
+    .steps { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; counter-reset: step; }
+    .step { background: var(--surface); border:1px solid var(--border); border-radius: 14px; padding: 18px; position: relative; }
+    .step:before { counter-increment: step; content: counter(step); position:absolute; top: -12px; left: -12px; background: #1d223d; border:1px solid var(--border); width: 36px; height: 36px; border-radius: 10px; display:flex; align-items:center; justify-content:center; color:#c7d2fe; font-weight: 800; }
+
+    /* Pricing */
+    .plans { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px; }
+    .plan { background: var(--surface); border:1px solid var(--border); border-radius: 14px; padding: 18px; }
+    .plan.popular { border-color: #33419e; box-shadow: 0 16px 40px rgba(102,126,234,0.22); }
+    .price { font-size: 2rem; font-weight: 800; color:#c7d2fe; }
+    .muted { color: var(--muted); }
+
+    /* CTA band */
+    .cta-band { background: linear-gradient(135deg, rgba(102,126,234,0.18), rgba(118,75,162,0.18)); border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+    .cta-band .inner { display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content: space-between; padding: 22px 0; }
+
+    /* Footer */
+    .footer { border-top:1px solid var(--border); padding: 24px 0; color: var(--muted); }
+    .footer .row { display:flex; gap: 18px; align-items:center; justify-content: space-between; flex-wrap:wrap; }
+    .footer a { color: var(--muted); text-decoration:none; }
+    .footer a:hover { color: #c7d2fe; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container nav">
+      <a href="/" class="brand"><i class="fas fa-file-alt"></i> Documenta</a>
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
+      <div class="nav-links" id="navLinks">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#pricing">Pricing</a>
+        <a class="nav-cta" href="/signin"><i class="fas fa-sign-in-alt"></i> Sign In</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero-wrap">
+      <div class="glow"></div>
+      <section class="container hero">
+        <div>
+          <h1>Create, edit, and share structured documents effortlessly</h1>
+          <p class="lead">Bring your PDF content to life with rich editing, flowcharts, and collaboration-ready sharing. Professional documentation tool.</p>
+          <div class="hero-actions">
+            <a href="/signup" class="btn"><i class="fas fa-rocket"></i> Get Started</a>
+            <a href="/projects" class="btn secondary"><i class="fas fa-folder-open"></i> Open Workspace</a>
+          </div>
+        </div>
+        <div class="mock">Visual Mockup</div>
+      </section>
+    </div>
+
+    <section id="features" class="section">
+      <div class="container">
+        <h2>Features</h2>
+        <p class="subtitle">Everything you need to transform documents into living, collaborative content.</p>
+        <div class="cards">
+          <div class="card"><h3><i class="fas fa-edit"></i> Rich Editor</h3><p>Powerful WYSIWYG with flowcharts and diagrams.</p></div>
+          <div class="card"><h3><i class="fas fa-share-alt"></i> Easy Sharing</h3><p>Share view-only links and control access.</p></div>
+          <div class="card"><h3><i class="fas fa-lock"></i> Secure</h3><p>Tokenized edit/download and user authentication.</p></div>
+          <div class="card"><h3><i class="fas fa-layer-group"></i> Components</h3><p>Tables, images, and diagrams with smart tools.</p></div>
+          <div class="card"><h3><i class="fas fa-cloud-download-alt"></i> Export</h3><p>Download edited HTML files on demand.</p></div>
+          <div class="card"><h3><i class="fas fa-bolt"></i> Fast</h3><p>Optimized UI for smooth, responsive editing.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how" class="section">
+      <div class="container">
+        <h2>How it works</h2>
+        <p class="subtitle">Get productive in minutes.</p>
+        <div class="steps">
+          <div class="step"><h3>Sign up</h3><p class="muted">Create your account and sign in.</p></div>
+          <div class="step"><h3>Create or open</h3><p class="muted">Start a new document or open an existing one.</p></div>
+          <div class="step"><h3>Edit</h3><p class="muted">Add text, images, tables, and flowcharts.</p></div>
+          <div class="step"><h3>Share</h3><p class="muted">Send a secure view link to your audience.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="pricing" class="section">
+      <div class="container">
+        <h2>Pricing</h2>
+        <p class="subtitle">Simple pricing for professional documentation.</p>
+        <div class="plans">
+          <div class="plan popular">
+            <h3>Professional</h3>
+            <div class="price">$10</div>
+            <p class="muted">Full access to all features.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta-band">
+      <div class="container inner">
+        <div>
+          <strong>Ready to build your next document?</strong>
+          <div class="muted">Sign up now and start editing in minutes.</div>
+        </div>
+        <div>
+          <a href="/signup" class="btn"><i class="fas fa-user-plus"></i> Create Account</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container row">
+      <div>© <span id="y"></span> Documenta</div>
+      <div style="display:flex; gap:14px;">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#pricing">Pricing</a>
+        <a href="/signin">Sign In</a>
+      </div>
+    </div>
+  </footer>
+  <script>
+    document.getElementById('y').textContent = new Date().getFullYear();
+    const navToggle = document.getElementById('navToggle');
+    const navLinks = document.getElementById('navLinks');
+    if (navToggle && navLinks) {
+      navToggle.addEventListener('click', ()=>{ navLinks.classList.toggle('show'); });
+      document.addEventListener('click', (e)=>{
+        if (!navLinks.contains(e.target) && !navToggle.contains(e.target)) navLinks.classList.remove('show');
+      });
+    }
+  </script>
+</body>
+</html>
+
