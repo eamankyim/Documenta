@@ -810,7 +810,7 @@
                 <button class="toolbar-btn" data-command="createLink" title="Insert Link">
                     <i class="fas fa-link"></i>
                 </button>
-                <button class="toolbar-btn" data-command="insertImage" title="Insert Image">
+                <button class="toolbar-btn" data-command="insertImage" title="Upload Image">
                     <i class="fas fa-image"></i>
                 </button>
             </div>
@@ -905,10 +905,22 @@
                             document.execCommand('createLink', false, url);
                         }
                     } else if (command === 'insertImage') {
-                        const url = prompt('Enter image URL:');
-                        if (url) {
-                            document.execCommand('insertImage', false, url);
-                        }
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        input.onchange = () => {
+                            const file = input.files && input.files[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                                const dataUrl = reader.result;
+                                if (typeof dataUrl === 'string') {
+                                    document.execCommand('insertImage', false, dataUrl);
+                                }
+                            };
+                            reader.readAsDataURL(file);
+                        };
+                        input.click();
                     } else if (command === 'convertToFlowchart') {
                         convertSelectedImageToFlowchart();
                     } else if (command === 'detectFlowcharts') {
