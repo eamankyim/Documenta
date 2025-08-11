@@ -1,1 +1,10 @@
-{"eamankyim@gmail.com": {"name": "Eric Amankyim", "email": "eamankyim@gmail.com", "password_hash": "scrypt:32768:8:1$xOkfWR7qqKq6T6pz$bce296b482ea0d7651436541690fdc76fe270d09c53b8fd0d9d4bee8ec3b958846f498bba0472f8faa91568427f28b9a45098a101611d44b4eaabb166cc5664e", "created_at": "2025-08-09T22:32:49.271187"}}
+{
+  "eamankyim@gmail.com": {
+    "name": "Eric Amankyim",
+    "email": "eamankyim@gmail.com",
+    "password_hash": "scrypt:32768:8:1$xOkfWR7qqKq6T6pz$bce296b482ea0d7651436541690fdc76fe270d09c53b8fd0d9d4bee8ec3b958846f498bba0472f8faa91568427f28b9a45098a101611d44b4eaabb166cc5664e",
+    "created_at": "2025-08-09T22:32:49.271187",
+    "plan": "Pro",
+    "plan_updated_at": "2025-08-11T22:16:41.379090"
+  }
+}
