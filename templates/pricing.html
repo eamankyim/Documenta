@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choose Your Plan - Documenta</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container" style="min-height: 100vh; padding: 40px 20px;">
+        <!-- Header -->
+        <div class="text-center" style="margin-bottom: 60px;">
+            <h1 style="font-size: 2.5rem; margin-bottom: 16px; color: var(--text);">Choose Your Plan</h1>
+            <p style="font-size: 1.1rem; color: var(--muted); max-width: 600px; margin: 0 auto;">
+                Select the perfect plan for your document management needs. All plans include a 7-day free trial.
+            </p>
+        </div>
+
+        <!-- Pricing Plans -->
+        <div class="plans">
+            <!-- Free Plan -->
+            <div class="plan">
+                <div>
+                    <h3>Free</h3>
+                    <div class="price">$0</div>
+                    <p class="muted">Forever</p>
+                </div>
+                
+                <ul>
+                    <li>
+                        <i class="fas fa-check"></i>
+                        View shared projects only
+                    </li>
+                    <li>
+                        <i class="fas fa-eye"></i>
+                        Read-only access
+                    </li>
+                    <li>
+                        <i class="fas fa-share-alt"></i>
+                        View projects shared with you
+                    </li>
+                    <li>
+                        <i class="fas fa-info-circle"></i>
+                        Community support
+                    </li>
+                </ul>
+                
+                <button class="btn secondary" style="width: 100%;" onclick="selectPlan('free')">
+                    Current Plan
+                </button>
+                <div style="margin-top: 16px;">
+                    <a href="/projects" class="btn secondary" style="width: 100%; display: block; text-align: center;">
+                        <i class="fas fa-rocket"></i> Go to Dashboard
+                    </a>
+                </div>
+            </div>
+
+            <!-- Pro Plan -->
+            <div class="plan popular">
+                <div style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 6px 16px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">
+                    MOST POPULAR
+                </div>
+                
+                <div>
+                    <h3>Pro</h3>
+                    <div class="price">$19</div>
+                    <p class="muted">per month</p>
+                </div>
+                
+                <ul>
+                    <li>
+                        <i class="fas fa-check"></i>
+                        Unlimited documents
+                    </li>
+                    <li>
+                        <i class="fas fa-check"></i>
+                        Advanced editing tools
+                    </li>
+                    <li>
+                        <i class="fas fa-check"></i>
+                        Priority support
+                    </li>
+                    <li>
+                        <i class="fas fa-check"></i>
+                        All export formats
+                    </li>
+                    <li>
+                        <i class="fas fa-check"></i>
+                        Team collaboration
+                    </li>
+                    <li>
+                        <i class="fas fa-check"></i>
+                        Advanced analytics
+                    </li>
+                </ul>
+                
+                <button class="btn" style="width: 100%;" onclick="selectPlan('pro')">
+                    <i class="fas fa-credit-card"></i> Start Free Trial
+                </button>
+            </div>
+
+            <!-- Enterprise Plan -->
+            <div class="plan">
+                <div>
+                    <h3>Enterprise</h3>
+                    <div class="price">$49</div>
+                    <p class="muted">per month</p>
+                </div>
+                
+                <ul>
+                    <li>
+                        <i class="fas fa-check"></i>
+                        Everything in Pro
+                    </li>
+                    <li>
+                        <i class="fas fa-check"></i>
+                        Custom integrations
+                    </li>
+                    <li>
+                        <i class="fas fa-check"></i>
+                        Dedicated support
+                    </li>
+                    <li>
+                        <i class="fas fa-check"></i>
+                        Advanced security
+                    </li>
+                    <li>
+                        <i class="fas fa-check"></i>
+                        Custom branding
+                    </li>
+                    <li>
+                        <i class="fas fa-check"></i>
+                        SLA guarantee
+                    </li>
+                </ul>
+                
+                <button class="btn" style="width: 100%;" onclick="selectPlan('enterprise')">
+                    <i class="fas fa-credit-card"></i> Start Free Trial
+                </button>
+            </div>
+        </div>
+
+        <!-- Payment Modal -->
+        <div id="paymentModal" class="modal">
+            <div class="modal-content">
+                <div class="text-center" style="margin-bottom: 24px;">
+                    <h2>Complete Your Subscription</h2>
+                    <p>You're signing up for the <span id="selectedPlanName" style="color: var(--primary); font-weight: 600;"></span> plan</p>
+                </div>
+                
+                <form id="paymentForm" style="margin-bottom: 24px;">
+                    <div class="form-field">
+                        <label>Card Number</label>
+                        <input type="text" class="form-input" placeholder="1234 5678 9012 3456" required>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="form-field">
+                            <label>Expiry Date</label>
+                            <input type="text" class="form-input" placeholder="MM/YY" required>
+                        </div>
+                        <div class="form-field">
+                            <label>CVC</label>
+                            <input type="text" class="form-input" placeholder="123" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-field">
+                        <label>Name on Card</label>
+                        <input type="text" class="form-input" placeholder="John Doe" required>
+                    </div>
+                </form>
+                
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn secondary" style="flex: 1;" onclick="closePaymentModal()">
+                        Cancel
+                    </button>
+                    <button class="btn" style="flex: 1;" onclick="processPayment()">
+                        <i class="fas fa-lock"></i> Subscribe Now
+                    </button>
+                </div>
+                
+                <div style="margin-top: 16px; text-align: center;">
+                    <p style="font-size: 0.8rem; color: var(--muted);">
+                        <i class="fas fa-shield-alt"></i> Your payment is secure and encrypted
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- FAQ Section -->
+        <div style="margin-top: 80px; max-width: 800px; margin-left: auto; margin-right: auto;">
+            <h2 style="text-align: center; color: var(--text); margin-bottom: 40px;">Frequently Asked Questions</h2>
+            
+            <div style="display: grid; gap: 24px;">
+                <div class="card">
+                    <h4 style="color: var(--text); margin-bottom: 12px;">Can I cancel my subscription anytime?</h4>
+                    <p style="color: var(--muted); margin: 0;">Yes, you can cancel your subscription at any time. You'll continue to have access until the end of your billing period.</p>
+                </div>
+                
+                <div class="card">
+                    <h4 style="color: var(--text); margin-bottom: 12px;">What happens after the free trial?</h4>
+                    <p style="color: var(--muted); margin: 0;">After your 7-day free trial, your subscription will automatically continue unless you cancel. You can upgrade, downgrade, or cancel at any time.</p>
+                </div>
+                
+                <div class="card">
+                    <h4 style="color: var(--text); margin-bottom: 12px;">Do you offer refunds?</h4>
+                    <p style="color: var(--muted); margin: 0;">We offer a 30-day money-back guarantee. If you're not satisfied, contact our support team for a full refund.</p>
+                </div>
+                
+                <div class="card">
+                    <h4 style="color: var(--text); margin-bottom: 12px;">Can I change plans later?</h4>
+                    <p style="color: var(--muted); margin: 0;">Absolutely! You can upgrade or downgrade your plan at any time. Changes take effect immediately and are prorated.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedPlan = null;
+        
+        function selectPlan(plan) {
+            if (plan === 'free') {
+                // Redirect to dashboard for free plan
+                window.location.href = '/projects';
+                return;
+            }
+            
+            selectedPlan = plan;
+            const planNames = {
+                'pro': 'Pro',
+                'enterprise': 'Enterprise'
+            };
+            
+            document.getElementById('selectedPlanName').textContent = planNames[plan];
+            document.getElementById('paymentModal').style.display = 'block';
+        }
+        
+        function closePaymentModal() {
+            document.getElementById('paymentModal').style.display = 'none';
+            selectedPlan = null;
+        }
+        
+        function processPayment() {
+            // Here you would integrate with a payment processor like Stripe
+            // For now, we'll simulate a successful payment and upgrade the plan
+            
+            const form = document.getElementById('paymentForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            
+            // Show loading state
+            const submitBtn = event.target;
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            submitBtn.disabled = true;
+            
+            // Simulate payment processing and upgrade plan
+            setTimeout(() => {
+                // Call the backend to upgrade the plan
+                fetch('/upgrade-plan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        plan: selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Show success message and redirect
+                        closePaymentModal();
+                        alert('Payment successful! Your plan has been upgraded.');
+                        window.location.href = '/projects';
+                    } else {
+                        alert('Error: ' + data.error);
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred. Please try again.');
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                });
+            }, 2000);
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('paymentModal');
+            if (event.target === modal) {
+                closePaymentModal();
+            }
+        }
+    </script>
+</body>
+</html> 
