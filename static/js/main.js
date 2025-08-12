@@ -498,16 +498,16 @@ function displayDocuments(documents) {
                 </div>
             </div>
             <div class="card-actions">
-                <button class="btn btn-secondary" onclick="DocumentManager.viewDocument('${doc.unique_id}')">
+                <button class="btn secondary" onclick="DocumentManager.viewDocument('${doc.unique_id}')">
                     <i class="fas fa-eye"></i> View
                 </button>
                 <button class="btn" onclick="DocumentManager.openDocument('${doc.unique_id}')">
                     <i class="fas fa-edit"></i> Edit
                 </button>
-                <button class="btn btn-secondary" onclick="DocumentManager.downloadDocument('${doc.unique_id}')">
+                <button class="btn secondary" onclick="DocumentManager.downloadDocument('${doc.unique_id}')">
                     <i class="fas fa-download"></i> Download
                 </button>
-                <button class="btn btn-error" onclick="DocumentManager.deleteDocument('${doc.unique_id}')">
+                <button class="btn danger" onclick="DocumentManager.deleteDocument('${doc.unique_id}')">
                     <i class="fas fa-trash"></i> Delete
                 </button>
             </div>

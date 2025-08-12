@@ -153,7 +153,7 @@ def _get_or_create_token(unique_id):
         token_obj = Token(unique_id=unique_id, token=tok)
         db.session.add(token_obj)
         db.session.commit()
-        return tok
+    return tok
     return token_obj.token
 
 def _verify_token(unique_id, provided):
@@ -543,7 +543,7 @@ def new_document():
         return redirect(url_for('pricing'))
     """Create a new blank document and redirect to the editor."""
     unique_id = str(uuid.uuid4())
-    
+
     # Minimal editable document with a main-content wrapper expected by the editor
     default_html = '''<!DOCTYPE html>
 <html lang="en">
@@ -660,7 +660,7 @@ def list_outputs():
     
     # Get projects from database
     projects = Project.query.order_by(Project.updated_at.desc()).all()
-    
+
     documents = []
     for project in projects:
         documents.append({

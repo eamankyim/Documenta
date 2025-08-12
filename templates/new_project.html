@@ -67,21 +67,7 @@
             text-decoration: none;
             display: inline-block;
         }
-        .btn-primary {
-            background: #3498db;
-            color: white;
-        }
-        .btn-primary:hover {
-            background: #2980b9;
-            transform: translateY(-1px);
-        }
-        .btn-secondary {
-            background: #95a5a6;
-            color: white;
-        }
-        .btn-secondary:hover {
-            background: #7f8c8d;
-        }
+
         .flash-message {
             padding: 12px 16px;
             border-radius: 8px;
@@ -132,8 +118,8 @@
             </div>
 
             <div class="form-actions">
-                <a href="{{ url_for('projects') }}" class="btn btn-secondary">Cancel</a>
-                <button type="submit" class="btn btn-primary">Create Project</button>
+                <a href="{{ url_for('projects') }}" class="btn secondary">Cancel</a>
+                <button type="submit" class="btn">Create Project</button>
             </div>
         </form>
     </div>

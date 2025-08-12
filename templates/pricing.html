@@ -13,7 +13,7 @@
         <div class="text-center" style="margin-bottom: 60px;">
             <h1 style="font-size: 2.5rem; margin-bottom: 16px; color: var(--text);">Choose Your Plan</h1>
             <p style="font-size: 1.1rem; color: var(--muted); max-width: 600px; margin: 0 auto;">
-                Select the perfect plan for your document management needs. All plans include a 7-day free trial.
+                Select the perfect plan for your document management needs. One-time payment, lifetime access.
             </p>
         </div>
 
@@ -64,8 +64,8 @@
                 
                 <div>
                     <h3>Pro</h3>
-                    <div class="price">$19</div>
-                    <p class="muted">per month</p>
+                    <div class="price">$100</div>
+                    <p class="muted">One-time, Lifetime</p>
                 </div>
                 
                 <ul>
@@ -96,7 +96,7 @@
                 </ul>
                 
                 <button class="btn" style="width: 100%;" onclick="selectPlan('pro')">
-                    <i class="fas fa-credit-card"></i> Start Free Trial
+                    <i class="fas fa-credit-card"></i> Buy Now - $100
                 </button>
             </div>
 
@@ -104,8 +104,8 @@
             <div class="plan">
                 <div>
                     <h3>Enterprise</h3>
-                    <div class="price">$49</div>
-                    <p class="muted">per month</p>
+                    <div class="price">$180</div>
+                    <p class="muted">One-time, Lifetime</p>
                 </div>
                 
                 <ul>
@@ -136,7 +136,7 @@
                 </ul>
                 
                 <button class="btn" style="width: 100%;" onclick="selectPlan('enterprise')">
-                    <i class="fas fa-credit-card"></i> Start Free Trial
+                    <i class="fas fa-credit-card"></i> Buy Now - $180
                 </button>
             </div>
         </div>
@@ -145,8 +145,8 @@
         <div id="paymentModal" class="modal">
             <div class="modal-content">
                 <div class="text-center" style="margin-bottom: 24px;">
-                    <h2>Complete Your Subscription</h2>
-                    <p>You're signing up for the <span id="selectedPlanName" style="color: var(--primary); font-weight: 600;"></span> plan</p>
+                    <h2>Complete Your Purchase</h2>
+                    <p>You're purchasing the <span id="selectedPlanName" style="color: var(--primary); font-weight: 600;"></span> plan</p>
                 </div>
                 
                 <form id="paymentForm" style="margin-bottom: 24px;">
@@ -177,7 +177,7 @@
                         Cancel
                     </button>
                     <button class="btn" style="flex: 1;" onclick="processPayment()">
-                        <i class="fas fa-lock"></i> Subscribe Now
+                        <i class="fas fa-lock"></i> Pay Now
                     </button>
                 </div>
                 
@@ -195,13 +195,13 @@
             
             <div style="display: grid; gap: 24px;">
                 <div class="card">
-                    <h4 style="color: var(--text); margin-bottom: 12px;">Can I cancel my subscription anytime?</h4>
-                    <p style="color: var(--muted); margin: 0;">Yes, you can cancel your subscription at any time. You'll continue to have access until the end of your billing period.</p>
+                    <h4 style="color: var(--text); margin-bottom: 12px;">Is this really a one-time payment?</h4>
+                    <p style="color: var(--muted); margin: 0;">Yes! You pay once and get lifetime access to all features. No recurring charges, no hidden fees.</p>
                 </div>
                 
                 <div class="card">
-                    <h4 style="color: var(--text); margin-bottom: 12px;">What happens after the free trial?</h4>
-                    <p style="color: var(--muted); margin: 0;">After your 7-day free trial, your subscription will automatically continue unless you cancel. You can upgrade, downgrade, or cancel at any time.</p>
+                    <h4 style="color: var(--text); margin-bottom: 12px;">What happens after I purchase?</h4>
+                    <p style="color: var(--muted); margin: 0;">Immediately after your one-time payment, you'll have full access to all features for life. No recurring charges, no expiration dates.</p>
                 </div>
                 
                 <div class="card">
@@ -210,8 +210,8 @@
                 </div>
                 
                 <div class="card">
-                    <h4 style="color: var(--text); margin-bottom: 12px;">Can I change plans later?</h4>
-                    <p style="color: var(--muted); margin: 0;">Absolutely! You can upgrade or downgrade your plan at any time. Changes take effect immediately and are prorated.</p>
+                    <h4 style="color: var(--text); margin-bottom: 12px;">Can I upgrade my plan later?</h4>
+                    <p style="color: var(--muted); margin: 0;">Yes! You can upgrade from Pro to Enterprise anytime. The difference will be prorated based on your original purchase date.</p>
                 </div>
             </div>
         </div>
