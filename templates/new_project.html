@@ -3,30 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forgot Password - SPLITTER</title>
+    <title>Create New Project - SPLITTER</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <style>
-        .forgot-password-container {
-            max-width: 400px;
-            margin: 100px auto;
+        .new-project-container {
+            max-width: 600px;
+            margin: 50px auto;
             padding: 40px;
             background: white;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
-        .forgot-password-header {
+        .new-project-header {
             text-align: center;
             margin-bottom: 30px;
         }
-        .forgot-password-title {
-            font-size: 24px;
+        .new-project-title {
+            font-size: 28px;
             font-weight: 600;
             color: #2c3e50;
             margin-bottom: 10px;
         }
-        .forgot-password-subtitle {
+        .new-project-subtitle {
             color: #7f8c8d;
-            font-size: 14px;
+            font-size: 16px;
         }
         .form-group {
             margin-bottom: 25px;
@@ -88,18 +88,23 @@
             margin-bottom: 20px;
             font-weight: 500;
         }
-        .flash-info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
+        .flash-error {
+            background: #fee;
+            color: #c0392b;
+            border: 1px solid #fadbd8;
+        }
+        .flash-success {
+            background: #d5f4e6;
+            color: #27ae60;
+            border: 1px solid #a8e6cf;
         }
     </style>
 </head>
 <body>
-    <div class="forgot-password-container">
-        <div class="forgot-password-header">
-            <h1 class="forgot-password-title">Forgot Password</h1>
-            <p class="forgot-password-subtitle">Enter your email to receive a reset link</p>
+    <div class="new-project-container">
+        <div class="new-project-header">
+            <h1 class="new-project-title">Create New Project</h1>
+            <p class="new-project-subtitle">Give your project a meaningful name to get started</p>
         </div>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -112,25 +117,25 @@
             {% endif %}
         {% endwith %}
 
-        <form method="POST">
+        <form method="POST" action="{{ url_for('new_named_document') }}">
             <div class="form-group">
-                <label for="email" class="form-label">Email Address</label>
+                <label for="project_name" class="form-label">Project Name</label>
                 <input 
-                    type="email" 
-                    id="email" 
-                    name="email" 
+                    type="text" 
+                    id="project_name" 
+                    name="project_name" 
                     class="form-input" 
-                    placeholder="Enter your email..."
+                    placeholder="Enter project name..."
                     required
                     autofocus
                 >
             </div>
 
             <div class="form-actions">
-                <a href="{{ url_for('signin') }}" class="btn btn-secondary">Back to Sign In</a>
-                <button type="submit" class="btn btn-primary">Send Reset Link</button>
+                <a href="{{ url_for('projects') }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Create Project</button>
             </div>
         </form>
     </div>
 </body>
-</html> 
+</html>

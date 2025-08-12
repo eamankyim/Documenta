@@ -199,6 +199,30 @@ def logout():
     session.clear()
     return redirect(url_for('signin'))
 
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        users = _load_users()
+        
+        if email in users:
+            # In a real app, you'd send an email here
+            flash('If an account with that email exists, a password reset link has been sent.', 'info')
+        else:
+            # Don't reveal if email exists or not
+            flash('If an account with that email exists, a password reset link has been sent.', 'info')
+        
+        return redirect(url_for('signin'))
+    
+    return render_template('forgot_password.html')
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    # For now, just redirect to signin
+    # In a real app, you'd verify the token and allow password reset
+    flash('Password reset functionality is not yet implemented.', 'info')
+    return redirect(url_for('signin'))
+
 @app.route('/api/me')
 def api_me():
     users = _load_users()
@@ -316,6 +340,7 @@ def save_content(unique_id):
         return jsonify({'error': 'Forbidden'}), 403
     data = request.get_json()
     content = data.get('content')
+    project_name = data.get('project_name', '').strip()
     
     if not content:
         return jsonify({'error': 'No content provided'}), 400
@@ -323,10 +348,22 @@ def save_content(unique_id):
     html_file = f"{unique_id}_converted.html"
     html_path = os.path.join(app.config['OUTPUT_FOLDER'], html_file)
     
+    # If this is the first save and no project name is provided, ask for one
+    if not project_name:
+        return jsonify({
+            'needs_name': True,
+            'message': 'Please provide a project name for your first save'
+        }), 400
+    
+    # Update the HTML content with the project name
+    
+    # Update <title> tag only (for browser tab and metadata)
+    content = re.sub(r'<title>.*?</title>', f'<title>{project_name}</title>', content, flags=re.IGNORECASE | re.DOTALL)
+    
     with open(html_path, 'w', encoding='utf-8') as f:
         f.write(content)
     
-    return jsonify({'success': True})
+    return jsonify({'success': True, 'message': f'Project "{project_name}" saved successfully!'})
 
 @app.route('/download/<unique_id>')
 def download_file(unique_id):
@@ -400,24 +437,17 @@ def new_document():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Untitled Document</title>
+    <title>New Project</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #2c3e50; }
         .main-content { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
-        .document-header { border-bottom: 1px solid #e0e0e0; margin-bottom: 20px; }
-        .main-title { font-size: 22px; font-weight: 600; }
         p { line-height: 1.7; margin: 12px 0; }
     </style>
     </head>
 <body>
-    <main class="main-content">
-        <header class="document-header">
-            <h1 class="main-title">Untitled Document</h1>
-        </header>
-        <section>
-            <p>Start typing here...</p>
-        </section>
-    </main>
+    <div class="main-content">
+        <p>Start typing here...</p>
+    </div>
 </body>
 </html>'''
 
@@ -448,18 +478,14 @@ def list_outputs():
             mtime = os.path.getmtime(full_path)
             modified = datetime.fromtimestamp(mtime).isoformat()
             size = os.path.getsize(full_path)
-            # Extract title preview
+            
+            # Extract title preview from <title> tag only
             title = None
             with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content_head = f.read(200000)
                 m = re.search(r'<title>(.*?)</title>', content_head, re.IGNORECASE | re.DOTALL)
                 if m:
                     title = re.sub(r'\s+', ' ', m.group(1)).strip()
-                if not title:
-                    m2 = re.search(r'<h1[^>]*class=["\"][^"\"]*main-title[^"\"]*["\"][^>]*>(.*?)</h1>', content_head, re.IGNORECASE | re.DOTALL)
-                    if m2:
-                        title = re.sub(r'<[^>]+>', '', m2.group(1))
-                        title = re.sub(r'\s+', ' ', title).strip()
         
         except Exception:
             modified = None
@@ -489,6 +515,52 @@ def get_token(unique_id):
         return jsonify({'error': 'File not found'}), 404
     tok = _get_or_create_token(unique_id)
     return jsonify({'token': tok})
+
+@app.route('/api/rename/<unique_id>', methods=['POST'])
+def rename_project(unique_id):
+    # Require authentication to rename
+    auth_resp = _require_auth()
+    if auth_resp:
+        return auth_resp
+    
+    # Check if user can edit projects (not Free plan)
+    if not _can_create_projects():
+        return jsonify({'error': 'Free plan users cannot rename projects. Please upgrade to Pro or Enterprise to rename projects.'}), 403
+    
+    token = request.args.get('token')
+    if not _verify_token(unique_id, token):
+        return jsonify({'error': 'Forbidden'}), 403
+    
+    data = request.get_json()
+    new_name = data.get('name', '').strip()
+    
+    if not new_name:
+        return jsonify({'error': 'Project name is required'}), 400
+    
+    html_file = f"{unique_id}_converted.html"
+    html_path = os.path.join(app.config['OUTPUT_FOLDER'], html_file)
+    
+    if not os.path.exists(html_path):
+        return jsonify({'error': 'Project not found'}), 404
+    
+    try:
+        # Read current content
+        with open(html_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Update title in HTML
+        
+        # Update <title> tag only (for browser tab and metadata)
+        content = re.sub(r'<title>.*?</title>', f'<title>{new_name}</title>', content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Write updated content
+        with open(html_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        return jsonify({'success': True, 'message': f'Project renamed to "{new_name}"'})
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to rename project: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

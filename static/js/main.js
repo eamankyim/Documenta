@@ -65,6 +65,83 @@ const Utils = {
     // Generate random ID
     generateId: function() {
         return Math.random().toString(36).substr(2, 9);
+    },
+
+    // Show delete confirmation modal
+    showDeleteConfirmation: function() {
+        return new Promise((resolve) => {
+            // Create modal HTML if it doesn't exist
+            let modal = document.getElementById('deleteConfirmModal');
+            if (!modal) {
+                modal = this.createDeleteModal();
+                document.body.appendChild(modal);
+            }
+
+            // Show modal
+            modal.classList.add('show');
+            
+            // Focus the cancel button by default (safer choice)
+            const cancelBtn = modal.querySelector('.delete-modal-cancel');
+            cancelBtn.focus();
+
+            // Handle confirm
+            const handleConfirm = () => {
+                hideModal();
+                resolve(true);
+            };
+
+            // Handle cancel
+            const handleCancel = () => {
+                hideModal();
+                resolve(false);
+            };
+
+            // Handle escape key
+            const handleKeyDown = (e) => {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    handleCancel();
+                }
+            };
+
+            // Hide modal
+            const hideModal = () => {
+                modal.classList.remove('show');
+                
+                // Remove event listeners
+                modal.querySelector('.delete-modal-confirm').removeEventListener('click', handleConfirm);
+                modal.querySelector('.delete-modal-cancel').removeEventListener('click', handleCancel);
+                document.removeEventListener('keydown', handleKeyDown);
+            };
+
+            // Add event listeners
+            modal.querySelector('.delete-modal-confirm').addEventListener('click', handleConfirm);
+            modal.querySelector('.delete-modal-cancel').addEventListener('click', handleCancel);
+            document.addEventListener('keydown', handleKeyDown);
+        });
+    },
+
+    // Create delete confirmation modal HTML
+    createDeleteModal: function() {
+        const modal = document.createElement('div');
+        modal.id = 'deleteConfirmModal';
+        modal.className = 'delete-modal-overlay';
+        modal.innerHTML = `
+            <div class="delete-modal-content">
+                <div class="delete-modal-header">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Delete Document</h3>
+                </div>
+                <div class="delete-modal-body">
+                    <p>Are you sure you want to delete this document?</p>
+                    <p class="delete-warning">This action cannot be undone.</p>
+                    <div class="delete-modal-actions">
+                        <button class="btn secondary delete-modal-cancel">Cancel</button>
+                        <button class="btn danger delete-modal-confirm">Delete Document</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        return modal;
     }
 };
 
@@ -249,7 +326,8 @@ const DocumentManager = {
     
     // Delete document
     deleteDocument: async function(uniqueId) {
-        if (confirm('Are you sure you want to delete this document? This action cannot be undone.')) {
+        const confirmed = await Utils.showDeleteConfirmation();
+        if (confirmed) {
             try {
                 const token = await API.getToken(uniqueId);
                 if (token.token) {

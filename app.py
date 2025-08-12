@@ -586,6 +586,71 @@ def new_document():
     _get_or_create_token(unique_id)
     return redirect(url_for('edit_converted', unique_id=unique_id, token=_get_or_create_token(unique_id)))
 
+@app.route('/new-named', methods=['GET', 'POST'])
+def new_named_document():
+    # Require authentication to create
+    auth_resp = _require_auth()
+    if auth_resp:
+        return auth_resp
+    
+    # Check if user can create projects (not Free plan)
+    if not _can_create_projects():
+        flash('Free plan users cannot create new projects. Please upgrade to Pro or Enterprise to create projects.', 'error')
+        return redirect(url_for('pricing'))
+    
+    if request.method == 'POST':
+        project_name = request.form.get('project_name', '').strip()
+        if not project_name:
+            flash('Project name is required', 'error')
+            return render_template('new_project.html')
+        
+        """Create a new named document and redirect to the editor."""
+        unique_id = str(uuid.uuid4())
+        
+        # Create document with custom title
+        default_html = f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{project_name}</title>
+    <style>
+        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #2c3e50; }}
+        .main-content {{ max-width: 1200px; margin: 0 auto; padding: 40px 20px; }}
+        .document-header {{ border-bottom: 1px solid #e0e0e0; margin-bottom: 20px; }}
+        .main-title {{ font-size: 22px; font-weight: 600; }}
+        p {{ line-height: 1.7; margin: 12px 0; }}
+    </style>
+    </head>
+<body>
+    <main class="main-content">
+        <header class="document-header">
+            <h1 class="main-title">{project_name}</h1>
+        </header>
+        <section>
+            <p>Start typing here...</p>
+        </section>
+    </main>
+</body>
+</html>'''
+
+        # Create project in database
+        project = Project(
+            unique_id=unique_id,
+            filename=f"{unique_id}_converted.html",
+            title=project_name,
+            content=default_html,
+            size=len(default_html)
+        )
+        db.session.add(project)
+        db.session.commit()
+
+        # Create edit token
+        _get_or_create_token(unique_id)
+        return redirect(url_for('edit_converted', unique_id=unique_id, token=_get_or_create_token(unique_id)))
+    
+    return render_template('new_project.html')
+
 @app.route('/api/list_outputs')
 def list_outputs():
     # Require authentication to list user documents (basic gating)
@@ -621,6 +686,58 @@ def get_token(unique_id):
     
     tok = _get_or_create_token(unique_id)
     return jsonify({'token': tok})
+
+@app.route('/api/rename/<unique_id>', methods=['POST'])
+def rename_project(unique_id):
+    # Require authentication to rename
+    auth_resp = _require_auth()
+    if auth_resp:
+        return auth_resp
+    
+    # Check if user can edit projects (not Free plan)
+    if not _can_create_projects():
+        return jsonify({'error': 'Free plan users cannot rename projects. Please upgrade to Pro or Enterprise to rename projects.'}), 403
+    
+    token = request.args.get('token')
+    if not _verify_token(unique_id, token):
+        return jsonify({'error': 'Forbidden'}), 403
+    
+    data = request.get_json()
+    new_name = data.get('name', '').strip()
+    
+    if not new_name:
+        return jsonify({'error': 'Project name is required'}), 400
+    
+    project = Project.query.filter_by(unique_id=unique_id).first()
+    if not project:
+        return jsonify({'error': 'Project not found'}), 404
+    
+    try:
+        # Update project title in database
+        project.title = new_name
+        
+        # Update content with new title
+        content = project.content
+        
+        # Update <title> tag
+        import re
+        content = re.sub(r'<title>.*?</title>', f'<title>{new_name}</title>', content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Update main title in h1
+        content = re.sub(r'<h1[^>]*class=["\"][^"\"]*main-title[^"\"]*["\"][^>]*>.*?</h1>', 
+                        f'<h1 class="main-title">{new_name}</h1>', content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Update project content and size
+        project.content = content
+        project.size = len(content)
+        project.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': f'Project renamed to "{new_name}"'})
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to rename project: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000) 

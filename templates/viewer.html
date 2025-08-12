@@ -406,7 +406,11 @@
             });
             document.getElementById('deleteLink').addEventListener('click', async (e) => {
                 e.preventDefault();
-                if (!confirm('Delete this document? This cannot be undone.')) return;
+                
+                // Show styled delete confirmation modal
+                const confirmed = await showDeleteConfirmation();
+                if (!confirmed) return;
+                
                 try {
                     const tok = document.getElementById('deleteLink').getAttribute('data-token') || '';
                     const res = await fetch(`/api/delete/{{ unique_id }}?token=${encodeURIComponent(tok)}`, { method: 'DELETE' });
@@ -714,6 +718,82 @@
             try { await navigator.clipboard.writeText(shareLinkEl.value); } catch (_) {}
             alert('Share queued. Recipients will receive the view link.');
         });
+
+        // --- Delete Confirmation Modal ---
+        function showDeleteConfirmation() {
+            return new Promise((resolve) => {
+                // Create modal HTML if it doesn't exist
+                let modal = document.getElementById('deleteConfirmModal');
+                if (!modal) {
+                    modal = createDeleteModal();
+                    document.body.appendChild(modal);
+                }
+
+                // Show modal
+                modal.classList.add('show');
+                
+                // Focus the cancel button by default (safer choice)
+                const cancelBtn = modal.querySelector('.delete-modal-cancel');
+                cancelBtn.focus();
+
+                // Handle confirm
+                const handleConfirm = () => {
+                    hideModal();
+                    resolve(true);
+                };
+
+                // Handle cancel
+                const handleCancel = () => {
+                    hideModal();
+                    resolve(false);
+                };
+
+                // Handle escape key
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Escape') {
+                        e.preventDefault();
+                        handleCancel();
+                    }
+                };
+
+                // Hide modal
+                const hideModal = () => {
+                    modal.classList.remove('show');
+                    
+                    // Remove event listeners
+                    modal.querySelector('.delete-modal-confirm').removeEventListener('click', handleConfirm);
+                    modal.querySelector('.delete-modal-cancel').removeEventListener('click', handleCancel);
+                    document.removeEventListener('keydown', handleKeyDown);
+                };
+
+                // Add event listeners
+                modal.querySelector('.delete-modal-confirm').addEventListener('click', handleConfirm);
+                modal.querySelector('.delete-modal-cancel').addEventListener('click', handleCancel);
+                document.addEventListener('keydown', handleKeyDown);
+            });
+        }
+
+        function createDeleteModal() {
+            const modal = document.createElement('div');
+            modal.id = 'deleteConfirmModal';
+            modal.className = 'delete-modal-overlay';
+            modal.innerHTML = `
+                <div class="delete-modal-content">
+                    <div class="delete-modal-header">
+                        <h3><i class="fas fa-exclamation-triangle"></i> Delete Document</h3>
+                    </div>
+                    <div class="delete-modal-body">
+                        <p>Are you sure you want to delete this document?</p>
+                        <p class="delete-warning">This action cannot be undone.</p>
+                        <div class="delete-modal-actions">
+                            <button class="btn secondary delete-modal-cancel">Cancel</button>
+                            <button class="btn danger delete-modal-confirm">Delete Document</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            return modal;
+        }
     </script>
 </body>
 </html> 

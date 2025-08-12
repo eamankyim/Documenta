@@ -632,4 +632,171 @@ a {
 .mb-5 { margin-bottom: 3rem; }
 
 .hidden { display: none; }
-.visible { display: block; } 
+.visible { display: block; }
+
+/* Delete Confirmation Modal Styles */
+.delete-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    z-index: 10000;
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.delete-modal-overlay.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+    visibility: visible;
+}
+
+.delete-modal-content {
+    background: var(--surface);
+    border-radius: 20px;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.4);
+    max-width: 480px;
+    width: 90%;
+    max-height: 90vh;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    animation: deleteModalSlideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.delete-modal-header {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    padding: 28px 28px 24px;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.delete-modal-header h3 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+}
+
+.delete-modal-header h3 i {
+    font-size: 20px;
+    opacity: 0.9;
+    color: #fecaca;
+}
+
+.delete-modal-body {
+    padding: 36px 28px 28px;
+    text-align: center;
+}
+
+.delete-modal-body p {
+    margin: 0 0 16px 0;
+    color: var(--text);
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+.delete-modal-body .delete-warning {
+    color: #fca5a5;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 32px;
+    padding: 12px 20px;
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: 10px;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.delete-modal-actions {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.delete-modal-actions .btn {
+    padding: 14px 28px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    min-width: 120px;
+    text-transform: none;
+}
+
+.delete-modal-actions .btn.secondary {
+    background: var(--border);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+.delete-modal-actions .btn.secondary:hover {
+    background: #2a3655;
+    border-color: #3a4a6a;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.delete-modal-actions .btn.danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    border: 1px solid #dc2626;
+}
+
+.delete-modal-actions .btn.danger:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+}
+
+.delete-modal-actions .btn:active {
+    transform: translateY(0);
+}
+
+/* Delete Modal Animations */
+@keyframes deleteModalSlideUp {
+    from { 
+        opacity: 0;
+        transform: translateY(40px) scale(0.9);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Responsive Delete Modal */
+@media (max-width: 768px) {
+    .delete-modal-content {
+        width: 95%;
+        margin: 20px;
+    }
+    
+    .delete-modal-header {
+        padding: 24px 24px 20px;
+    }
+    
+    .delete-modal-body {
+        padding: 28px 24px 24px;
+    }
+    
+    .delete-modal-actions {
+        flex-direction: column;
+    }
+    
+    .delete-modal-actions .btn {
+        width: 100%;
+    }
+} 

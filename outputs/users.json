@@ -2,9 +2,16 @@
   "eamankyim@gmail.com": {
     "name": "Eric Amankyim",
     "email": "eamankyim@gmail.com",
-    "password_hash": "scrypt:32768:8:1$xOkfWR7qqKq6T6pz$bce296b482ea0d7651436541690fdc76fe270d09c53b8fd0d9d4bee8ec3b958846f498bba0472f8faa91568427f28b9a45098a101611d44b4eaabb166cc5664e",
-    "created_at": "2025-08-09T22:32:49.271187",
+    "password_hash": "scrypt:32768:8:1$aPeoe4Keyz1bwuaQ$229e4c9d2a3ea8c1caa1c46b03f032edd1e5ffcd07465925f37f1041c604e44acc7df39b2f7db05fe24990063ec168d2d6ea32aa08592ea891d7f37be67b6962",
+    "created_at": "2025-08-11T23:13:53.525301",
+    "plan": "Pro"
+  },
+  "test@example.com": {
+    "name": "Test User",
+    "email": "test@example.com",
+    "password_hash": "scrypt:32768:8:1$SM0cj64UZkpEZ1F0$880fe6c24b0ca209bc6d1e454874c1e553c231fe4aed2d14635d9f3e8726ac0e9e2224ed9effe171562be9dbfb7709c4d5cb39c54425c62f31dc77d38e25f846",
+    "created_at": "2025-08-11T23:20:26.242859",
     "plan": "Pro",
-    "plan_updated_at": "2025-08-11T22:16:41.379090"
+    "plan_updated_at": "2025-08-11T23:20:26.243506"
   }
 }
