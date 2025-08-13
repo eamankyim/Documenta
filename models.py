@@ -1,6 +1,11 @@
+import psycopg
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
+
+# Force SQLAlchemy to use psycopg3
+import os
+os.environ['SQLALCHEMY_ENGINE_OPTIONS'] = '{"connect_args": {"driver": "psycopg"}}'
 
 db = SQLAlchemy()
 
