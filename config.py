@@ -31,8 +31,9 @@ class ProductionConfig(Config):
     # Ensure DATABASE_URL is set in production
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
     
-    if not SQLALCHEMY_DATABASE_URI:
-        raise ValueError("DATABASE_URL environment variable must be set in production")
+    def __init__(self):
+        if not self.SQLALCHEMY_DATABASE_URI:
+            raise ValueError("DATABASE_URL environment variable must be set in production")
 
 class TestingConfig(Config):
     """Testing configuration"""

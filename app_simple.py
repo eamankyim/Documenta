@@ -89,36 +89,7 @@ def projects():
 def site_home():
     return render_template('website_home.html')
 
-@app.route('/pricing')
-def pricing():
-    return render_template('pricing.html')
-
-@app.route('/upgrade-plan', methods=['POST'])
-def upgrade_plan():
-    if not _is_authenticated():
-        return jsonify({'error': 'Authentication required'}), 401
-    
-    data = request.get_json()
-    plan = data.get('plan')
-    
-    if plan not in ['Pro', 'Enterprise']:
-        return jsonify({'error': 'Invalid plan'}), 400
-    
-    users = _load_users()
-    email = _current_user_email()
-    
-    if email in users:
-        users[email]['plan'] = plan
-        users[email]['plan_updated_at'] = datetime.utcnow().isoformat()
-        _save_users(users)
-        
-        return jsonify({
-            'success': True,
-            'plan': plan,
-            'message': f'Successfully upgraded to {plan} plan!'
-        })
-    
-    return jsonify({'error': 'User not found'}), 404
+# Removed duplicate pricing and upgrade-plan routes
 
 # --- Auth routes ---
 from werkzeug.security import generate_password_hash, check_password_hash
