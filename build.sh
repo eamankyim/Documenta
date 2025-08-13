@@ -5,6 +5,12 @@
 pip install -r render-requirements.txt
 
 # Initialize the database
-python render_setup.py
+python setup_database.py
+
+# Run database migration if needed
+if [ -f "migrate_to_postgres.py" ]; then
+    echo "Running database migration..."
+    python migrate_to_postgres.py
+fi
 
 echo "Build completed successfully!"

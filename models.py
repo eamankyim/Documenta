@@ -50,3 +50,14 @@ class ResetToken(db.Model):
     token = db.Column(db.String(255), nullable=False)
     expires = db.Column(db.DateTime, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+def init_db(app):
+    """Initialize the database with the Flask app context"""
+    db.init_app(app)
+    
+    with app.app_context():
+        # Create all tables
+        db.create_all()
+        print("Database tables created successfully!")
+    
+    return db
