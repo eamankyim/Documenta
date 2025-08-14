@@ -7,19 +7,51 @@ This script will migrate existing data from JSON files to the PostgreSQL databas
 import os
 import json
 import uuid
-from datetime import datetime
-from app_simple import app
-from models import init_db, User, Project, Token, ResetToken
+from datetime import datetime, timezone
+from flask import Flask
+from models import db, User, Project, Token, ResetToken
 from werkzeug.security import generate_password_hash
+
+def create_migration_app():
+    """Create a minimal Flask app for migration"""
+    app = Flask(__name__)
+    
+    # Get database URL from environment and transform it
+    database_url = os.environ.get('DATABASE_URL')
+    if not database_url:
+        print("ERROR: DATABASE_URL environment variable not set!")
+        return None
+    
+    # Transform URL to use psycopg3
+    if database_url.startswith('postgresql://'):
+        database_url = database_url.replace('postgresql://', 'postgresql+psycopg://', 1)
+    
+    print(f"Using database URL: {database_url}")
+    
+    # Configure the app
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'migration-secret-key')
+    
+    # Initialize database
+    db.init_app(app)
+    
+    return app
 
 def migrate_to_postgres():
     """Migrate all existing data to PostgreSQL database"""
     print("Starting migration to PostgreSQL...")
     
-    # Initialize database
-    db = init_db(app)
+    # Create migration app
+    app = create_migration_app()
+    if not app:
+        print("Failed to create migration app")
+        return
     
     with app.app_context():
+        # Create tables if they don't exist
+        db.create_all()
+        
         # Migrate users
         migrate_users()
         
@@ -54,8 +86,8 @@ def migrate_users():
                         name=user_data.get('name', ''),
                         password_hash=user_data.get('password_hash', ''),
                         plan=user_data.get('plan', 'Free'),
-                        created_at=datetime.fromisoformat(user_data.get('created_at', datetime.utcnow().isoformat())),
-                        plan_updated_at=datetime.fromisoformat(user_data.get('plan_updated_at', datetime.utcnow().isoformat())) if user_data.get('plan_updated_at') else None
+                        created_at=datetime.fromisoformat(user_data.get('created_at', datetime.now(timezone.utc).isoformat())),
+                        plan_updated_at=datetime.fromisoformat(user_data.get('plan_updated_at', datetime.now(timezone.utc).isoformat())) if user_data.get('plan_updated_at') else None
                     )
                     db.session.add(user)
                     migrated_count += 1

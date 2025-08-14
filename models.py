@@ -1,6 +1,6 @@
 import psycopg
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Force SQLAlchemy to use psycopg3 for Python 3.13 compatibility
@@ -17,7 +17,7 @@ class User(db.Model):
     name = db.Column(db.String(100), nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     plan = db.Column(db.String(20), default='Free')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     plan_updated_at = db.Column(db.DateTime)
     
     def set_password(self, password):
@@ -35,8 +35,8 @@ class Project(db.Model):
     title = db.Column(db.String(255))
     content = db.Column(db.Text)
     size = db.Column(db.Integer)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 
 class Token(db.Model):
@@ -45,7 +45,7 @@ class Token(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     unique_id = db.Column(db.String(36), nullable=False)
     token = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
 class ResetToken(db.Model):
     __tablename__ = 'reset_tokens'
@@ -54,7 +54,7 @@ class ResetToken(db.Model):
     email = db.Column(db.String(120), nullable=False)
     token = db.Column(db.String(255), nullable=False)
     expires = db.Column(db.DateTime, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
 def init_db(app):
     """Initialize the database with the Flask app context"""
