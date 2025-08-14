@@ -18,7 +18,7 @@ services:
         value: production
       - key: FLASK_DEBUG
         value: 0
-    healthCheckPath: /health
+    healthCheckPath: /status
     autoDeploy: true
 
 databases:

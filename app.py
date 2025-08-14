@@ -20,17 +20,15 @@ app.config.from_object(config[config_name])
 # Initialize database
 db.init_app(app)
 
-# Database connection error handling
-@app.before_request
-def before_request():
-    """Handle database connection issues gracefully"""
+# Database connection error handling - only for critical routes
+def _check_db_connection():
+    """Check database connection when needed"""
     try:
-        # Test database connection
         db.session.execute('SELECT 1')
+        return True
     except Exception as e:
         print(f"Database connection error: {e}")
-        # Return a 503 Service Unavailable instead of 504 Gateway Timeout
-        return jsonify({'error': 'Database temporarily unavailable'}), 503
+        return False
 
 # Ensure directories exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -53,9 +51,13 @@ def _get_user_plan() -> str:
     """Get the current user's plan from database"""
     if not _is_authenticated():
         return None
-    email = _current_user_email()
-    user = User.query.filter_by(email=email).first()
-    return user.plan if user else 'Free'
+    try:
+        email = _current_user_email()
+        user = User.query.filter_by(email=email).first()
+        return user.plan if user else 'Free'
+    except Exception as e:
+        print(f"Error getting user plan: {e}")
+        return 'Free'  # Default to Free plan on error
 
 def _can_create_projects() -> bool:
     """Check if current user can create projects (not Free plan)"""
@@ -717,10 +719,15 @@ def health_check():
     """Health check endpoint for Render monitoring"""
     try:
         # Test database connection
-        db.session.execute('SELECT 1')
-        db_status = 'healthy'
+        if _check_db_connection():
+            db_status = 'healthy'
+            status_code = 200
+        else:
+            db_status = 'unhealthy'
+            status_code = 503
     except Exception as e:
         db_status = f'unhealthy: {str(e)}'
+        status_code = 503
     
     return jsonify({
         'status': 'healthy' if db_status == 'healthy' else 'degraded',
@@ -729,7 +736,16 @@ def health_check():
         'version': '1.0.0',
         'database': db_status,
         'environment': os.environ.get('FLASK_ENV', 'unknown')
-    }), 200 if db_status == 'healthy' else 503
+    }), status_code
+
+@app.route('/status')
+def status_check():
+    """Simple status endpoint for basic health checks"""
+    return jsonify({
+        'status': 'running',
+        'timestamp': datetime.now(timezone.utc).isoformat(),
+        'service': 'Documenta'
+    }), 200
 
 @app.route('/pricing')
 def pricing():
@@ -772,6 +788,12 @@ if __name__ == '__main__':
         print("=" * 50)
         print("STARTING FLASK APPLICATION")
         print("=" * 50)
+        
+        # Add startup delay for production to allow database to be ready
+        if os.environ.get('FLASK_ENV') == 'production':
+            import time
+            print("Production mode detected. Waiting 10 seconds for database to be ready...")
+            time.sleep(10)
         
         # Initialize database tables if they don't exist (without dropping existing data)
         print("Initializing database...")

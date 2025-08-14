@@ -49,7 +49,8 @@ def initialize_database():
         print(f"Database initialization warning: {e}")
         print("Continuing with app startup...")
 
-if __name__ == "__main__":
+def main():
+    """Main startup function"""
     print("=" * 50)
     print("STARTING DOCUMENTA APPLICATION")
     print("=" * 50)
@@ -63,3 +64,6 @@ if __name__ == "__main__":
     
     print("Application startup completed!")
     print("=" * 50)
+
+if __name__ == "__main__":
+    main()
