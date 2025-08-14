@@ -675,31 +675,14 @@ def internal_error(error):
     return render_template('500.html'), 500
 
 if __name__ == '__main__':
-    try:
-        print("=" * 50)
-        print("STARTING FLASK APPLICATION")
-        print("=" * 50)
-        
-        # Create database tables if they don't exist
-        print("Initializing database...")
-        with app.app_context():
-            db.create_all()
-        print("Database initialized successfully!")
-        
-        # Use PORT environment variable for Render deployment
-        port = int(os.environ.get('PORT', 5000))
-        print(f"Starting Flask app on port {port}")
-        print(f"Environment: {os.environ.get('FLASK_ENV', 'development')}")
-        print(f"Debug mode: {os.environ.get('FLASK_DEBUG', 'False')}")
-        print(f"Database URL: {app.config.get('SQLALCHEMY_DATABASE_URI', 'Not set')}")
-        print("=" * 50)
-        print("APP IS STARTING - THIS SHOULD STAY RUNNING")
-        print("=" * 50)
-        
-        app.run(debug=False, host='0.0.0.0', port=port)
-        
-    except Exception as e:
-        print(f"ERROR starting app: {e}")
-        import traceback
-        traceback.print_exc()
-        raise
+    # Create database tables if they don't exist
+    with app.app_context():
+        db.create_all()
+    
+    # Use PORT environment variable for Render deployment
+    port = int(os.environ.get('PORT', 5000))
+    print(f"Starting Flask app on port {port}")
+    print(f"Environment: {os.environ.get('FLASK_ENV', 'development')}")
+    print(f"Debug mode: {os.environ.get('FLASK_DEBUG', 'False')}")
+    
+    app.run(debug=False, host='0.0.0.0', port=port)
