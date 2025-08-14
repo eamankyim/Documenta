@@ -127,6 +127,22 @@
 
         .toolbar-group:last-of-type { border-right: none; padding-right: 0; }
 
+        #selection-tools {
+            background: rgba(40, 167, 69, 0.1);
+            border-radius: 6px;
+            padding: 4px;
+            border: 1px solid rgba(40, 167, 69, 0.3);
+        }
+
+        #selection-tools .toolbar-btn {
+            background: rgba(40, 167, 69, 0.1);
+            border: 1px solid rgba(40, 167, 69, 0.3);
+        }
+
+        #selection-tools .toolbar-btn:hover {
+            background: rgba(40, 167, 69, 0.2);
+        }
+
         .toolbar-btn {
             background: white;
             border: 1px solid #e9ecef;
@@ -249,6 +265,38 @@
         .multi-selected {
             outline: 2px dashed #28a745;
             outline-offset: 2px;
+            position: relative;
+        }
+        
+        .multi-selected::before {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            right: -4px;
+            bottom: -4px;
+            background: rgba(40, 167, 69, 0.1);
+            border-radius: 4px;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .multi-selected[style*="background"]::after {
+            content: '🎨';
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ffc107;
+            color: #000;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            pointer-events: none;
+            z-index: 10;
         }
         .selection-rect {
             position: absolute;
@@ -1063,6 +1111,20 @@
                 </button>
                 <button class="toolbar-btn" data-command="underline" title="Underline">
                     <i class="fas fa-underline"></i>
+                </button>
+            </div>
+
+            <div class="toolbar-separator"></div>
+
+            <div class="toolbar-group" id="selection-tools" style="display: none;">
+                <button class="toolbar-btn" id="delete-selected-btn" title="Delete Selected (Delete)">
+                    <i class="fas fa-trash"></i>
+                </button>
+                <button class="toolbar-btn" id="clear-background-btn" title="Clear Background">
+                    <i class="fas fa-eraser"></i>
+                </button>
+                <button class="toolbar-btn" id="clear-selection-btn" title="Clear Selection (Esc)">
+                    <i class="fas fa-times"></i>
                 </button>
             </div>
 
@@ -2392,6 +2454,31 @@
         // Load content when page loads
         loadContent();
 
+        // Selection toolbar event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            const deleteSelectedBtn = document.getElementById('delete-selected-btn');
+            const clearBackgroundBtn = document.getElementById('clear-background-btn');
+            const clearSelectionBtn = document.getElementById('clear-selection-btn');
+
+            if (deleteSelectedBtn) {
+                deleteSelectedBtn.addEventListener('click', () => {
+                    deleteSelectedNodes();
+                });
+            }
+
+            if (clearBackgroundBtn) {
+                clearBackgroundBtn.addEventListener('click', () => {
+                    clearBackgrounds();
+                });
+            }
+
+            if (clearSelectionBtn) {
+                clearSelectionBtn.addEventListener('click', () => {
+                    clearMultiSelection();
+                });
+            }
+        });
+
         // --- Selection marquee and context menu ---
         function ensureContextMenu() {
             if (contextMenuEl) return;
@@ -2399,6 +2486,7 @@
             contextMenuEl.className = 'context-menu';
             contextMenuEl.innerHTML = `
                 <button data-action="delete-selected"><i class="fas fa-trash"></i> Delete Selected</button>
+                <button data-action="clear-background"><i class="fas fa-eraser"></i> Clear Background</button>
                 <button data-action="clear-selection"><i class="fas fa-times"></i> Clear Selection</button>
             `;
             document.body.appendChild(contextMenuEl);
@@ -2408,6 +2496,8 @@
                 const action = btn.getAttribute('data-action');
                 if (action === 'delete-selected') {
                     deleteSelectedNodes();
+                } else if (action === 'clear-background') {
+                    clearBackgrounds();
                 } else if (action === 'clear-selection') {
                     clearMultiSelection();
                 }
@@ -2470,47 +2560,185 @@
 
         function markElementsInsideRect(x, y, w, h) {
             const marquee = { left: x, top: y, right: x + w, bottom: y + h };
-            // Candidate nodes: images wrappers, flowchart shapes/containers, paragraphs, tables
-            const candidates = editor.querySelectorAll('.img-wrap, .flowchart-shape, .flowchart-container, table, p, h1, h2, h3, h4, h5, h6, li');
+            // Enhanced candidate nodes: images wrappers, flowchart shapes/containers, paragraphs, tables, divs with backgrounds, sections, and other content elements
+            const candidates = editor.querySelectorAll(`
+                .img-wrap, 
+                .flowchart-shape, 
+                .flowchart-container, 
+                table, 
+                p, 
+                h1, h2, h3, h4, h5, h6, 
+                li, 
+                div[style*="background"], 
+                div[class*="background"], 
+                section, 
+                article, 
+                blockquote, 
+                .content-block,
+                .text-block,
+                [style*="background-color"],
+                [style*="background-image"],
+                [class*="bg-"],
+                [class*="background"]
+            `);
+            
             multiSelected.forEach(el => el.classList.remove('multi-selected'));
             multiSelected.clear();
+            
             candidates.forEach(el => {
                 if (!el.getBoundingClientRect) return;
+                
+                // Skip elements that are already children of selected elements to avoid double selection
+                const isChildOfSelected = Array.from(multiSelected).some(selected => selected.contains(el));
+                if (isChildOfSelected) return;
+                
                 const r = elementRect(el);
                 if (rectsIntersect(marquee, r)) {
-                    el.classList.add('multi-selected');
-                    multiSelected.add(el);
+                    // Check if element has visible content or background
+                    const hasVisibleContent = el.textContent.trim().length > 0 || 
+                                            el.querySelector('img') || 
+                                            el.querySelector('table') ||
+                                            el.style.backgroundImage ||
+                                            el.style.backgroundColor ||
+                                            el.className.includes('background') ||
+                                            el.className.includes('bg-') ||
+                                            getComputedStyle(el).backgroundColor !== 'rgba(0, 0, 0, 0)' ||
+                                            getComputedStyle(el).backgroundImage !== 'none';
+                    
+                    if (hasVisibleContent) {
+                        el.classList.add('multi-selected');
+                        multiSelected.add(el);
+                    }
                 }
             });
+            updateSelectionToolbar();
         }
 
         function clearMultiSelection() {
             multiSelected.forEach(el => el.classList.remove('multi-selected'));
             multiSelected.clear();
+            updateSelectionToolbar();
+        }
+
+        function updateSelectionToolbar() {
+            const selectionTools = document.getElementById('selection-tools');
+            if (selectionTools) {
+                selectionTools.style.display = multiSelected.size > 0 ? 'flex' : 'none';
+            }
+        }
+
+        function clearBackgrounds() {
+            if (multiSelected.size === 0) return;
+            
+            let clearedCount = 0;
+            multiSelected.forEach(node => {
+                let hasBackground = false;
+                
+                // Clear inline background styles
+                if (node.style.backgroundImage) {
+                    node.style.backgroundImage = '';
+                    hasBackground = true;
+                }
+                if (node.style.backgroundColor) {
+                    node.style.backgroundColor = '';
+                    hasBackground = true;
+                }
+                
+                // Clear background classes
+                if (node.className) {
+                    const originalClasses = node.className;
+                    node.className = node.className.replace(/\b(bg-|background)[^\s]*/g, '').trim();
+                    if (node.className !== originalClasses) {
+                        hasBackground = true;
+                    }
+                }
+                
+                // Clear computed background styles
+                const computedStyle = getComputedStyle(node);
+                if (computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)' && computedStyle.backgroundColor !== 'transparent') {
+                    node.style.backgroundColor = 'transparent';
+                    hasBackground = true;
+                }
+                if (computedStyle.backgroundImage !== 'none') {
+                    node.style.backgroundImage = 'none';
+                    hasBackground = true;
+                }
+                
+                if (hasBackground) {
+                    clearedCount++;
+                }
+            });
+            
+            if (clearedCount > 0) {
+                showStatus(`${clearedCount} background${clearedCount > 1 ? 's' : ''} cleared`, 'success');
+            }
         }
 
         function deleteSelectedNodes() {
             if (multiSelected.size === 0) return;
-            // Prefer removing higher-level containers to avoid double-removal
+            
+            // Enhanced deletion logic for different content types
             const toRemove = Array.from(multiSelected).sort((a,b) => {
                 // deeper nodes later
                 const da = depth(a), db = depth(b);
                 return da - db;
             });
+            
             const removed = new Set();
+            let deletedCount = 0;
+            
             toRemove.forEach(node => {
                 if ([...removed].some(r => r.contains(node))) return;
-                // If a flowchart shape, remove via jsPlumb if possible
-                const flowchart = node.closest && node.closest('.flowchart-container');
-                if (node.classList && node.classList.contains('flowchart-shape') && flowchart && flowchart._jsp) {
-                    try { flowchart._jsp.remove(node); } catch (_) { node.remove(); }
-                } else {
+                
+                // Enhanced deletion for different content types
+                if (node.classList && node.classList.contains('flowchart-shape')) {
+                    // Handle flowchart shapes
+                    const flowchart = node.closest && node.closest('.flowchart-container');
+                    if (flowchart && flowchart._jsp) {
+                        try { 
+                            flowchart._jsp.remove(node); 
+                            deletedCount++;
+                        } catch (_) { 
+                            node.remove(); 
+                            deletedCount++;
+                        }
+                    } else {
+                        node.remove();
+                        deletedCount++;
+                    }
+                } else if (node.classList && node.classList.contains('img-wrap')) {
+                    // Handle image wrappers
                     node.remove();
+                    deletedCount++;
+                } else if (node.tagName === 'TABLE') {
+                    // Handle tables
+                    node.remove();
+                    deletedCount++;
+                } else if (node.style && (node.style.backgroundImage || node.style.backgroundColor)) {
+                    // Handle background elements
+                    // Clear background instead of removing the element
+                    node.style.backgroundImage = '';
+                    node.style.backgroundColor = '';
+                    node.classList.remove('bg-', 'background');
+                    deletedCount++;
+                } else if (node.className && (node.className.includes('background') || node.className.includes('bg-'))) {
+                    // Handle elements with background classes
+                    node.className = node.className.replace(/\b(bg-|background)[^\s]*/g, '').trim();
+                    deletedCount++;
+                } else {
+                    // Default removal for other elements
+                    node.remove();
+                    deletedCount++;
                 }
+                
                 removed.add(node);
             });
+            
             clearMultiSelection();
-            showStatus('Selected items deleted', 'success');
+            
+            if (deletedCount > 0) {
+                showStatus(`${deletedCount} item${deletedCount > 1 ? 's' : ''} deleted`, 'success');
+            }
         }
 
         function depth(el) { let d = 0, n = el; while (n) { d++; n = n.parentElement; } return d; }
@@ -2538,6 +2766,69 @@
                 showContextMenu(e.clientX, e.clientY);
             }
         });
+
+        // Keyboard shortcuts for selection and deletion
+        document.addEventListener('keydown', (e) => {
+            // Delete key - delete selected items
+            if (e.key === 'Delete' && multiSelected.size > 0) {
+                e.preventDefault();
+                deleteSelectedNodes();
+            }
+            // Escape key - clear selection
+            else if (e.key === 'Escape' && multiSelected.size > 0) {
+                e.preventDefault();
+                clearMultiSelection();
+            }
+            // Ctrl/Cmd + A - select all content elements
+            else if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+                e.preventDefault();
+                selectAllContent();
+            }
+        });
+
+        function selectAllContent() {
+            clearMultiSelection();
+            const allContent = editor.querySelectorAll(`
+                .img-wrap, 
+                .flowchart-shape, 
+                .flowchart-container, 
+                table, 
+                p, 
+                h1, h2, h3, h4, h5, h6, 
+                li, 
+                div[style*="background"], 
+                div[class*="background"], 
+                section, 
+                article, 
+                blockquote, 
+                .content-block,
+                .text-block,
+                [style*="background-color"],
+                [style*="background-image"],
+                [class*="bg-"],
+                [class*="background"]
+            `);
+            
+            allContent.forEach(el => {
+                if (el.textContent.trim().length > 0 || 
+                    el.querySelector('img') || 
+                    el.querySelector('table') ||
+                    el.style.backgroundImage ||
+                    el.style.backgroundColor ||
+                    el.className.includes('background') ||
+                    el.className.includes('bg-') ||
+                    getComputedStyle(el).backgroundColor !== 'rgba(0, 0, 0, 0)' ||
+                    getComputedStyle(el).backgroundImage !== 'none') {
+                    el.classList.add('multi-selected');
+                    multiSelected.add(el);
+                }
+            });
+            
+            if (multiSelected.size > 0) {
+                showStatus(`${multiSelected.size} item${multiSelected.size > 1 ? 's' : ''} selected`, 'info');
+            }
+            updateSelectionToolbar();
+        }
 
         // --- Paste Flowchart Modal logic ---
         let pastedImageDataURL = null;

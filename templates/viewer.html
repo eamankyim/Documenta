@@ -88,9 +88,10 @@
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             padding: 20px;
-            height: fit-content;
+            height: calc(100vh - 200px);
             position: sticky;
             top: 100px;
+            overflow-y: auto;
         }
 
         .sidebar-title {
@@ -104,20 +105,79 @@
 
         .toc-list {
             list-style: none;
+            margin: 0;
+            padding: 0;
         }
 
         .toc-item {
+            margin-bottom: 4px;
+        }
+
+        .toc-group {
             margin-bottom: 8px;
+        }
+
+        .toc-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 0.95rem;
+        }
+
+        .toc-group-header:hover {
+            background: #e9ecef;
+        }
+
+        .toc-group-header.expanded {
+            background: #667eea;
+            color: white;
+        }
+
+        .toc-group-toggle {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease;
+        }
+
+        .toc-group-toggle.expanded {
+            transform: rotate(90deg);
+        }
+
+        .toc-group-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            margin-left: 16px;
+        }
+
+        .toc-group-content.expanded {
+            max-height: 500px;
         }
 
         .toc-link {
             color: #6c757d;
             text-decoration: none;
             display: block;
-            padding: 8px 12px;
+            padding: 6px 12px;
             border-radius: 6px;
             transition: all 0.3s ease;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            margin-left: 8px;
         }
 
         .toc-link:hover {
@@ -128,6 +188,31 @@
         .toc-link.active {
             background: #667eea;
             color: white;
+        }
+
+        /* Custom scrollbar for sidebar */
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        /* Firefox scrollbar */
+        .sidebar {
+            scrollbar-width: thin;
+            scrollbar-color: #c1c1c1 #f1f1f1;
         }
 
         .content-area {
@@ -551,7 +636,7 @@
                     try {
                         const tocItems = [];
                         const scope = documentContent;
-                        const numberPrefixRe = /^\s*\d+(?:\.\d+)*[).]?\s+/;
+                        const numberPrefixRe = /^\s*(\d+(?:\.\d+)*)[).]?\s+(.*)$/;
                         const candidates = Array.from(scope.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,div'))
                             .filter(el => numberPrefixRe.test((el.textContent || '').trim()))
                             .filter(el => (el.textContent || '').trim().length <= 200);
@@ -560,9 +645,13 @@
                             // last-resort fallback: any heading
                             list = Array.from(scope.querySelectorAll('h2,h3'));
                         }
+                        
+                        // Parse and group TOC items
+                        const groupedItems = {};
                         list.forEach((el, index) => {
                             const text = (el.textContent || '').trim();
                             if (!text) return;
+                            
                             if (!el.id) {
                                 let base = slugify(text);
                                 // Ensure ID doesn't start with a digit (problematic for CSS selectors)
@@ -572,19 +661,146 @@
                                 while (document.getElementById(id)) { id = `${base}-${counter++}`; }
                                 el.id = id;
                             }
-                            tocItems.push({ href: `#${el.id}`, text, index });
+                            
+                            const match = text.match(numberPrefixRe);
+                            if (match) {
+                                const number = match[1];
+                                const title = match[2];
+                                const parts = number.split('.');
+                                const mainSection = parts[0];
+                                
+                                if (!groupedItems[mainSection]) {
+                                    // Try to find a better title for the main section
+                                    let sectionTitle = `Section ${mainSection}`;
+                                    const mainSectionEl = list.find(el => {
+                                        const text = (el.textContent || '').trim();
+                                        const match = text.match(numberPrefixRe);
+                                        return match && match[1] === mainSection && match[1].split('.').length === 1;
+                                    });
+                                    if (mainSectionEl) {
+                                        const text = (mainSectionEl.textContent || '').trim();
+                                        const match = text.match(numberPrefixRe);
+                                        if (match) {
+                                            sectionTitle = match[2];
+                                        }
+                                    }
+                                    groupedItems[mainSection] = {
+                                        title: sectionTitle,
+                                        items: []
+                                    };
+                                }
+                                
+                                groupedItems[mainSection].items.push({
+                                    href: `#${el.id}`,
+                                    text: title,
+                                    number: number,
+                                    level: parts.length
+                                });
+                            } else {
+                                // Fallback for items without clear numbering
+                                if (!groupedItems['other']) {
+                                    groupedItems['other'] = {
+                                        title: 'Other Sections',
+                                        items: []
+                                    };
+                                }
+                                groupedItems['other'].items.push({
+                                    href: `#${el.id}`,
+                                    text: text,
+                                    number: '',
+                                    level: 1
+                                });
+                            }
                         });
+                        
                         tocList.innerHTML = '';
-                        if (tocItems.length === 0) {
+                        if (Object.keys(groupedItems).length === 0) {
                             tocList.innerHTML = '<li class="toc-item" style="color:#6c757d;">No sections found</li>';
                             return;
                         }
-                        tocItems.forEach(item => {
-                            const li = document.createElement('li');
-                            li.className = 'toc-item';
-                            li.innerHTML = `<a href="${item.href}" class="toc-link" data-target="${item.href}">${item.text}</a>`;
-                            tocList.appendChild(li);
+                        
+                        // Build grouped TOC HTML
+                        Object.keys(groupedItems).sort((a, b) => {
+                            if (a === 'other') return 1;
+                            if (b === 'other') return -1;
+                            return parseInt(a) - parseInt(b);
+                        }).forEach(sectionKey => {
+                            const section = groupedItems[sectionKey];
+                            
+                            if (section.items.length === 1 && section.items[0].level === 1) {
+                                // Single main section item
+                                const li = document.createElement('li');
+                                li.className = 'toc-item';
+                                li.innerHTML = `<a href="${section.items[0].href}" class="toc-link" data-target="${section.items[0].href}">${section.items[0].text}</a>`;
+                                tocList.appendChild(li);
+                            } else {
+                                // Grouped section with expandable content
+                                const groupLi = document.createElement('li');
+                                groupLi.className = 'toc-group';
+                                
+                                const groupHeader = document.createElement('div');
+                                groupHeader.className = 'toc-group-header';
+                                groupHeader.innerHTML = `
+                                    <span>${section.title}</span>
+                                    <button class="toc-group-toggle" type="button">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                `;
+                                
+                                const groupContent = document.createElement('div');
+                                groupContent.className = 'toc-group-content';
+                                
+                                // Sort items by their numbering
+                                section.items.sort((a, b) => {
+                                    if (!a.number || !b.number) return 0;
+                                    const aParts = a.number.split('.').map(Number);
+                                    const bParts = b.number.split('.').map(Number);
+                                    for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+                                        const aVal = aParts[i] || 0;
+                                        const bVal = bParts[i] || 0;
+                                        if (aVal !== bVal) return aVal - bVal;
+                                    }
+                                    return 0;
+                                });
+                                
+                                section.items.forEach(item => {
+                                    const itemLi = document.createElement('li');
+                                    itemLi.className = 'toc-item';
+                                    itemLi.innerHTML = `<a href="${item.href}" class="toc-link" data-target="${item.href}">${item.number ? item.number + ' ' : ''}${item.text}</a>`;
+                                    groupContent.appendChild(itemLi);
+                                });
+                                
+                                groupLi.appendChild(groupHeader);
+                                groupLi.appendChild(groupContent);
+                                tocList.appendChild(groupLi);
+                                
+                                // Add click handler for group header
+                                groupHeader.addEventListener('click', () => {
+                                    const isExpanded = groupHeader.classList.contains('expanded');
+                                    if (isExpanded) {
+                                        groupHeader.classList.remove('expanded');
+                                        groupHeader.querySelector('.toc-group-toggle').classList.remove('expanded');
+                                        groupContent.classList.remove('expanded');
+                                    } else {
+                                        groupHeader.classList.add('expanded');
+                                        groupHeader.querySelector('.toc-group-toggle').classList.add('expanded');
+                                        groupContent.classList.add('expanded');
+                                    }
+                                });
+                                
+                                // Expand the first section by default
+                                if (sectionKey === Object.keys(groupedItems).sort((a, b) => {
+                                    if (a === 'other') return 1;
+                                    if (b === 'other') return -1;
+                                    return parseInt(a) - parseInt(b);
+                                })[0]) {
+                                    groupHeader.classList.add('expanded');
+                                    groupHeader.querySelector('.toc-group-toggle').classList.add('expanded');
+                                    groupContent.classList.add('expanded');
+                                }
+                            }
                         });
+                        
                         // Smooth scrolling within content
                         tocList.querySelectorAll('.toc-link').forEach(link => {
                             link.addEventListener('click', (e) => {
