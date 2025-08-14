@@ -2801,8 +2801,8 @@
                                             getComputedStyle(el).backgroundImage !== 'none';
                     
                     if (hasVisibleContent) {
-                        el.classList.add('multi-selected');
-                        multiSelected.add(el);
+                    el.classList.add('multi-selected');
+                    multiSelected.add(el);
                     }
                 }
             });
@@ -2888,7 +2888,7 @@
                 // Enhanced deletion for different content types
                 if (node.classList && node.classList.contains('flowchart-shape')) {
                     // Handle flowchart shapes
-                    const flowchart = node.closest && node.closest('.flowchart-container');
+                const flowchart = node.closest && node.closest('.flowchart-container');
                     if (flowchart && flowchart._jsp) {
                         try { 
                             flowchart._jsp.remove(node); 
@@ -2897,8 +2897,8 @@
                             node.remove(); 
                             deletedCount++;
                         }
-                    } else {
-                        node.remove();
+                } else {
+                    node.remove();
                         deletedCount++;
                     }
                 } else if (node.classList && node.classList.contains('img-wrap')) {

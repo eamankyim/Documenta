@@ -650,7 +650,7 @@
                         for (const pattern of numberPatterns) {
                             const candidates = Array.from(scope.querySelectorAll('h1,h2,h3,h4,h5,h6'))
                                 .filter(el => pattern.test((el.textContent || '').trim()))
-                                .filter(el => (el.textContent || '').trim().length <= 200);
+                            .filter(el => (el.textContent || '').trim().length <= 200);
                             if (candidates.length > 0) {
                                 list = candidates;
                                 break;
@@ -806,10 +806,10 @@
                             
                             if (section.items.length === 1 && section.items[0].level === 1) {
                                 // Single main section item
-                                const li = document.createElement('li');
-                                li.className = 'toc-item';
+                            const li = document.createElement('li');
+                            li.className = 'toc-item';
                                 li.innerHTML = `<a href="${section.items[0].href}" class="toc-link" data-target="${section.items[0].href}">${section.items[0].text}</a>`;
-                                tocList.appendChild(li);
+                            tocList.appendChild(li);
                             } else {
                                 // Grouped section with expandable content
                                 const groupLi = document.createElement('li');

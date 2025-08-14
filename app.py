@@ -371,116 +371,30 @@ def save_content(unique_id):
     if not _verify_token(unique_id, token):
         return jsonify({'error': 'Forbidden'}), 403
     
-    try:
-        data = request.get_json()
-        content = data.get('content')
-        project_name = data.get('project_name', '').strip()
-        
-        if not content:
-            return jsonify({'error': 'No content provided'}), 400
-        
-        # Check content size (limit to 50MB to prevent memory issues)
-        content_size = len(content.encode('utf-8'))
-        max_size = 50 * 1024 * 1024  # 50MB
-        
-        if content_size > max_size:
-            return jsonify({
-                'error': f'Content too large ({content_size // (1024*1024)}MB). Maximum allowed size is 50MB.'
-            }), 413
-        
-        html_file = f"{unique_id}_converted.html"
-        html_path = os.path.join(app.config['OUTPUT_FOLDER'], html_file)
-        
-        # If this is the first save and no project name is provided, ask for one
-        if not project_name:
-            return jsonify({
-                'needs_name': True,
-                'message': 'Please provide a project name for your first save'
-            }), 400
-        
-        # Create backup of existing file if it exists
-        backup_path = None
-        if os.path.exists(html_path):
-            backup_file = f"{unique_id}_backup_{int(datetime.now().timestamp())}.html"
-            backup_path = os.path.join(app.config['OUTPUT_FOLDER'], backup_file)
-            try:
-                import shutil
-                shutil.copy2(html_path, backup_path)
-            except Exception as e:
-                print(f"Warning: Could not create backup: {e}")
-        
-        # Update the HTML content with the project name
-        content = re.sub(r'<title>.*?</title>', f'<title>{project_name}</title>', content, flags=re.IGNORECASE | re.DOTALL)
-        
-        # Write content to temporary file first, then move to final location
-        temp_path = html_path + '.tmp'
-        try:
-            with open(temp_path, 'w', encoding='utf-8') as f:
-                f.write(content)
-            
-            # Verify the temporary file was written correctly
-            with open(temp_path, 'r', encoding='utf-8') as f:
-                written_content = f.read()
-                if len(written_content) != len(content):
-                    raise Exception("Content length mismatch during write")
-            
-            # Move temporary file to final location
-            import shutil
-            shutil.move(temp_path, html_path)
-            
-            # Clean up old backups (keep only last 3)
-            if backup_path:
-                cleanup_old_backups(unique_id)
-            
-            return jsonify({
-                'success': True, 
-                'message': f'Project "{project_name}" saved successfully!',
-                'size_mb': round(content_size / (1024*1024), 2)
-            })
-            
-        except Exception as e:
-            # If something went wrong, try to restore from backup
-            if backup_path and os.path.exists(backup_path):
-                try:
-                    shutil.move(backup_path, html_path)
-                    return jsonify({
-                        'error': f'Save failed, but previous version was restored. Error: {str(e)}'
-                    }), 500
-                except:
-                    pass
-            
-            # Clean up temporary file if it exists
-            if os.path.exists(temp_path):
-                try:
-                    os.remove(temp_path)
-                except:
-                    pass
-            
-            raise e
-            
-    except Exception as e:
+    data = request.get_json()
+    content = data.get('content')
+    project_name = data.get('project_name', '').strip()
+    
+    if not content:
+        return jsonify({'error': 'No content provided'}), 400
+    
+    html_file = f"{unique_id}_converted.html"
+    html_path = os.path.join(app.config['OUTPUT_FOLDER'], html_file)
+    
+    # If this is the first save and no project name is provided, ask for one
+    if not project_name:
         return jsonify({
-            'error': f'Failed to save content: {str(e)}'
-        }), 500
-
-def cleanup_old_backups(unique_id):
-    """Clean up old backup files, keeping only the last 3"""
-    try:
-        backup_files = []
-        for file in os.listdir(app.config['OUTPUT_FOLDER']):
-            if file.startswith(f"{unique_id}_backup_") and file.endswith('.html'):
-                backup_files.append(file)
-        
-        if len(backup_files) > 3:
-            # Sort by timestamp and remove oldest
-            backup_files.sort()
-            for old_backup in backup_files[:-3]:
-                try:
-                    os.remove(os.path.join(app.config['OUTPUT_FOLDER'], old_backup))
-                except:
-                    pass
-    except Exception as e:
-        print(f"Warning: Could not cleanup backups: {e}")
+            'needs_name': True,
+            'message': 'Please provide a project name for your first save'
+        }), 400
+    
+    # Update the HTML content with the project name
+    content = re.sub(r'<title>.*?</title>', f'<title>{project_name}</title>', content, flags=re.IGNORECASE | re.DOTALL)
+    
+    with open(html_path, 'w', encoding='utf-8') as f:
+        f.write(content)
+    
+    return jsonify({'success': True, 'message': f'Project "{project_name}" saved successfully!'})
 
 @app.route('/download/<unique_id>')
 def download_file(unique_id):
