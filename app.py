@@ -20,6 +20,18 @@ app.config.from_object(config[config_name])
 # Initialize database
 db.init_app(app)
 
+# Database connection error handling
+@app.before_request
+def before_request():
+    """Handle database connection issues gracefully"""
+    try:
+        # Test database connection
+        db.session.execute('SELECT 1')
+    except Exception as e:
+        print(f"Database connection error: {e}")
+        # Return a 503 Service Unavailable instead of 504 Gateway Timeout
+        return jsonify({'error': 'Database temporarily unavailable'}), 503
+
 # Ensure directories exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
@@ -345,6 +357,12 @@ def edit_converted(unique_id):
 
 @app.route('/api/content/<unique_id>')
 def get_content(unique_id):
+    # First try to get content from database (more reliable)
+    project = Project.query.filter_by(unique_id=unique_id).first()
+    if project and project.content:
+        return jsonify({'content': project.content})
+    
+    # Fallback to file system if database doesn't have content
     html_file = f"{unique_id}_converted.html"
     html_path = os.path.join(app.config['OUTPUT_FOLDER'], html_file)
     
@@ -391,8 +409,45 @@ def save_content(unique_id):
     # Update the HTML content with the project name
     content = re.sub(r'<title>.*?</title>', f'<title>{project_name}</title>', content, flags=re.IGNORECASE | re.DOTALL)
     
+    # Save to file system for immediate editing
     with open(html_path, 'w', encoding='utf-8') as f:
         f.write(content)
+    
+    # ALSO save to database for persistence
+    try:
+        project = Project.query.filter_by(unique_id=unique_id).first()
+        if project:
+            # Update existing project
+            project.content = content
+            project.title = project_name
+            project.updated_at = datetime.now(timezone.utc)
+            project.size = len(content)
+        else:
+            # Create new project record if it doesn't exist
+            project = Project(
+                unique_id=unique_id,
+                filename=html_file,
+                title=project_name,
+                content=content,
+                size=len(content)
+            )
+            # Associate with current user if authenticated
+            if _is_authenticated():
+                user = User.query.filter_by(email=_current_user_email()).first()
+                if user:
+                    project.user_id = user.id
+            db.session.add(project)
+        
+        db.session.commit()
+        print(f"Successfully saved project {unique_id} to database")
+    except Exception as e:
+        # Log the error but don't fail the save operation
+        print(f"Database save error for {unique_id}: {str(e)}")
+        # Try to rollback the session
+        try:
+            db.session.rollback()
+        except:
+            pass
     
     return jsonify({'success': True, 'message': f'Project "{project_name}" saved successfully!'})
 
@@ -484,6 +539,26 @@ def new_document():
 
     with open(html_path, 'w', encoding='utf-8') as f:
         f.write(default_html)
+
+    # Create database record for the new project
+    try:
+        project = Project(
+            unique_id=unique_id,
+            filename=html_file,
+            title='New Project',
+            content=default_html,
+            size=len(default_html)
+        )
+        # Associate with current user if authenticated
+        if _is_authenticated():
+            user = User.query.filter_by(email=_current_user_email()).first()
+            if user:
+                project.user_id = user.id
+        db.session.add(project)
+        db.session.commit()
+    except Exception as e:
+        # Log the error but don't fail the document creation
+        print(f"Database creation error: {str(e)}")
 
     # create edit token
     _get_or_create_token(unique_id)
@@ -639,13 +714,22 @@ def api_projects():
 
 @app.route('/health')
 def health_check():
-    """Health check endpoint to keep service active"""
+    """Health check endpoint for Render monitoring"""
+    try:
+        # Test database connection
+        db.session.execute('SELECT 1')
+        db_status = 'healthy'
+    except Exception as e:
+        db_status = f'unhealthy: {str(e)}'
+    
     return jsonify({
-        'status': 'healthy',
+        'status': 'healthy' if db_status == 'healthy' else 'degraded',
         'timestamp': datetime.now(timezone.utc).isoformat(),
         'service': 'Documenta',
-        'version': '1.0.0'
-    })
+        'version': '1.0.0',
+        'database': db_status,
+        'environment': os.environ.get('FLASK_ENV', 'unknown')
+    }), 200 if db_status == 'healthy' else 503
 
 @app.route('/pricing')
 def pricing():
@@ -692,19 +776,23 @@ if __name__ == '__main__':
         # Initialize database tables if they don't exist (without dropping existing data)
         print("Initializing database...")
         with app.app_context():
-            # Check if tables already exist to avoid data loss
-            inspector = db.inspect(db.engine)
-            existing_tables = inspector.get_table_names()
-            
-            if not existing_tables:
-                print("No existing tables found. Creating new database schema...")
-                db.create_all()
-                print("Database schema created successfully!")
-            else:
-                print(f"Found existing tables: {existing_tables}")
-                print("Database already initialized. Skipping schema creation to preserve data.")
+            try:
+                # Check if tables already exist to avoid data loss
+                inspector = db.inspect(db.engine)
+                existing_tables = inspector.get_table_names()
                 
-        print("Database initialization completed!")
+                if not existing_tables:
+                    print("No existing tables found. Creating new database schema...")
+                    db.create_all()
+                    print("Database schema created successfully!")
+                else:
+                    print(f"Found existing tables: {existing_tables}")
+                    print("Database already initialized. Skipping schema creation to preserve data.")
+                    
+                print("Database initialization completed!")
+            except Exception as db_error:
+                print(f"Database initialization warning: {db_error}")
+                print("Continuing with app startup...")
         
         # Use PORT environment variable for Render deployment
         port = int(os.environ.get('PORT', 5000))

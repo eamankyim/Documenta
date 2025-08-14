@@ -107,6 +107,31 @@ After deployment, check:
 
 ## 🔧 **Troubleshooting**
 
+### **🚨 IMMEDIATE FIXES FOR BAD GATEWAY:**
+
+#### **1. Test Your App Locally First**
+```bash
+# Run the test script to verify everything works
+python test_render_deployment.py
+```
+
+#### **2. Check Render Logs**
+- Go to your Render dashboard
+- Click on your service
+- Go to "Logs" tab
+- Look for error messages during startup
+
+#### **3. Common Bad Gateway Causes:**
+- **Missing dependencies**: Check `render-requirements.txt`
+- **Database connection failure**: Verify `DATABASE_URL`
+- **Import errors**: Check for missing modules
+- **Port binding issues**: Ensure app binds to `0.0.0.0`
+
+#### **4. Force Redeploy**
+- In Render dashboard, click "Manual Deploy"
+- Choose "Clear build cache & deploy"
+- Monitor logs for errors
+
 ### **Common Issues:**
 1. **"Database not found"**: Check `DATABASE_URL` format
 2. **"Connection refused"**: Verify PostgreSQL service is running

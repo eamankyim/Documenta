@@ -19,6 +19,16 @@ class Config:
     SQLALCHEMY_DATABASE_URI = transform_database_url(os.environ.get('DATABASE_URL'))
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
+    # Database connection pool settings to prevent timeouts
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_size': 10,
+        'pool_timeout': 20,
+        'pool_recycle': 300,
+        'max_overflow': 20,
+        'pool_pre_ping': True,
+        'echo': False
+    }
+    
     # Session configuration
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)
     
