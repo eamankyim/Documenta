@@ -636,14 +636,49 @@
                     try {
                         const tocItems = [];
                         const scope = documentContent;
-                        const numberPrefixRe = /^\s*(\d+(?:\.\d+)*)[).]?\s+(.*)$/;
-                        const candidates = Array.from(scope.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,div'))
-                            .filter(el => numberPrefixRe.test((el.textContent || '').trim()))
-                            .filter(el => (el.textContent || '').trim().length <= 200);
-                        let list = candidates.length > 0 ? candidates : Array.from(scope.querySelectorAll('h1'));
+                        
+                        // More flexible regex patterns for different numbering formats
+                        const numberPatterns = [
+                            /^\s*(\d+(?:\.\d+)*)[).]?\s+(.*)$/,  // 1.1, 1.2, etc.
+                            /^\s*([IVX]+)[).]?\s+(.*)$/i,        // I, II, III, etc.
+                            /^\s*([A-Z])[).]?\s+(.*)$/,          // A, B, C, etc.
+                            /^\s*(\d+)[).]?\s+(.*)$/             // 1, 2, 3, etc.
+                        ];
+                        
+                        // First try to find numbered headings
+                        let list = [];
+                        for (const pattern of numberPatterns) {
+                            const candidates = Array.from(scope.querySelectorAll('h1,h2,h3,h4,h5,h6'))
+                                .filter(el => pattern.test((el.textContent || '').trim()))
+                                .filter(el => (el.textContent || '').trim().length <= 200);
+                            if (candidates.length > 0) {
+                                list = candidates;
+                                break;
+                            }
+                        }
+                        
+                        // If no numbered headings, try paragraphs and divs with numbers
                         if (list.length === 0) {
-                            // last-resort fallback: any heading
-                            list = Array.from(scope.querySelectorAll('h2,h3'));
+                            for (const pattern of numberPatterns) {
+                                const candidates = Array.from(scope.querySelectorAll('p,li,div'))
+                                    .filter(el => pattern.test((el.textContent || '').trim()))
+                                    .filter(el => (el.textContent || '').trim().length <= 200);
+                                if (candidates.length > 0) {
+                                    list = candidates;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // Last resort: any headings
+                        if (list.length === 0) {
+                            list = Array.from(scope.querySelectorAll('h1,h2,h3,h4,h5,h6'));
+                        }
+                        
+                        // If still nothing, try any content that might be a section
+                        if (list.length === 0) {
+                            list = Array.from(scope.querySelectorAll('p,div'))
+                                .filter(el => (el.textContent || '').trim().length > 10 && (el.textContent || '').trim().length <= 200);
                         }
                         
                         // Parse and group TOC items
@@ -662,26 +697,68 @@
                                 el.id = id;
                             }
                             
-                            const match = text.match(numberPrefixRe);
+                            // Try to match with any of the number patterns
+                            let match = null;
+                            let patternIndex = -1;
+                            
+                            for (let i = 0; i < numberPatterns.length; i++) {
+                                const testMatch = text.match(numberPatterns[i]);
+                                if (testMatch) {
+                                    match = testMatch;
+                                    patternIndex = i;
+                                    break;
+                                }
+                            }
                             if (match) {
                                 const number = match[1];
                                 const title = match[2];
-                                const parts = number.split('.');
-                                const mainSection = parts[0];
+                                
+                                // Handle different numbering formats
+                                let mainSection, parts;
+                                if (patternIndex === 0) {
+                                    // Decimal format: 1.1, 1.2, etc.
+                                    parts = number.split('.');
+                                    mainSection = parts[0];
+                                } else if (patternIndex === 1) {
+                                    // Roman numerals: I, II, III, etc.
+                                    parts = [number];
+                                    mainSection = number;
+                                } else if (patternIndex === 2) {
+                                    // Letters: A, B, C, etc.
+                                    parts = [number];
+                                    mainSection = number;
+                                } else {
+                                    // Simple numbers: 1, 2, 3, etc.
+                                    parts = [number];
+                                    mainSection = number;
+                                }
                                 
                                 if (!groupedItems[mainSection]) {
                                     // Try to find a better title for the main section
                                     let sectionTitle = `Section ${mainSection}`;
                                     const mainSectionEl = list.find(el => {
-                                        const text = (el.textContent || '').trim();
-                                        const match = text.match(numberPrefixRe);
-                                        return match && match[1] === mainSection && match[1].split('.').length === 1;
+                                        const text = el.textContent.trim();
+                                        for (const pattern of numberPatterns) {
+                                            const testMatch = text.match(pattern);
+                                            if (testMatch && testMatch[1] === mainSection) {
+                                                // Check if it's a main section (single level)
+                                                if (patternIndex === 0) {
+                                                    return testMatch[1].split('.').length === 1;
+                                                } else {
+                                                    return true; // Roman, letter, or simple number
+                                                }
+                                            }
+                                        }
+                                        return false;
                                     });
                                     if (mainSectionEl) {
-                                        const text = (mainSectionEl.textContent || '').trim();
-                                        const match = text.match(numberPrefixRe);
-                                        if (match) {
-                                            sectionTitle = match[2];
+                                        const text = mainSectionEl.textContent.trim();
+                                        for (const pattern of numberPatterns) {
+                                            const testMatch = text.match(pattern);
+                                            if (testMatch && testMatch[1] === mainSection) {
+                                                sectionTitle = testMatch[2];
+                                                break;
+                                            }
                                         }
                                     }
                                     groupedItems[mainSection] = {
@@ -789,11 +866,7 @@
                                 });
                                 
                                 // Expand the first section by default
-                                if (sectionKey === Object.keys(groupedItems).sort((a, b) => {
-                                    if (a === 'other') return 1;
-                                    if (b === 'other') return -1;
-                                    return parseInt(a) - parseInt(b);
-                                })[0]) {
+                                if (index === 0) {
                                     groupHeader.classList.add('expanded');
                                     groupHeader.querySelector('.toc-group-toggle').classList.add('expanded');
                                     groupContent.classList.add('expanded');

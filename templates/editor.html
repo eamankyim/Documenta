@@ -198,6 +198,27 @@
 
         .toolbar-separator { display: none; }
 
+        .auto-save-indicator {
+            color: #28a745;
+            font-size: 0.85rem;
+            font-weight: 500;
+            padding: 6px 12px;
+            background: rgba(40, 167, 69, 0.1);
+            border-radius: 4px;
+            border: 1px solid rgba(40, 167, 69, 0.3);
+        }
+
+        .auto-save-indicator i {
+            margin-right: 6px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
         .dropdown {
             position: relative;
             display: inline-block;
@@ -1182,6 +1203,14 @@
 
             <div class="toolbar-separator"></div>
 
+            <div class="toolbar-group" id="auto-save-status" style="display: none;">
+                <span class="auto-save-indicator">
+                    <i class="fas fa-save"></i> Auto-save active
+                </span>
+            </div>
+
+            <div class="toolbar-separator"></div>
+
             <div class="toolbar-group">
                 <select id="fontSize" title="Font Size">
                     <option value="1">Small</option>
@@ -2143,48 +2172,113 @@
             }
         }
 
-                // Save functionality
-        saveBtn.addEventListener('click', async () => {
-            saveBtn.disabled = true;
-            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
+
+        // Enhanced Save functionality with auto-save and recovery
+        let autoSaveInterval = null;
+        let lastSavedContent = '';
+        let unsavedChanges = false;
+        let saveAttempts = 0;
+        const MAX_SAVE_ATTEMPTS = 3;
+
+        // Auto-save functionality
+        function startAutoSave() {
+            if (autoSaveInterval) clearInterval(autoSaveInterval);
+            autoSaveInterval = setInterval(async () => {
+                if (unsavedChanges) {
+                    await autoSave();
+                }
+            }, 30000); // Auto-save every 30 seconds
+            
+            // Show auto-save status
+            const statusEl = document.getElementById('auto-save-status');
+            if (statusEl) statusEl.style.display = 'block';
+        }
+
+        function stopAutoSave() {
+            if (autoSaveInterval) {
+                clearInterval(autoSaveInterval);
+                autoSaveInterval = null;
+            }
+            
+            // Hide auto-save status
+            const statusEl = document.getElementById('auto-save-status');
+            if (statusEl) statusEl.style.display = 'none';
+        }
+
+        // Local storage backup
+        function saveToLocalStorage(content, projectName = '') {
             try {
-                // Ensure we have an edit token
-                await ensureEditToken();
-                
-                // Always prompt for project name on first save
-                let projectName = '';
-                
-                // Check if we already have a meaningful project name (not default titles)
-                const currentTitle = document.querySelector('title');
-                console.log('Current title:', currentTitle ? currentTitle.textContent : 'No title element');
-                
-                if (currentTitle && 
-                    currentTitle.textContent !== 'Edited Document' && 
-                    currentTitle.textContent !== 'Untitled Document' &&
-                    currentTitle.textContent !== 'New Project' &&
-                    currentTitle.textContent !== 'Documenta — Editor') {
-                    projectName = currentTitle.textContent;
-                    console.log('Using existing project name:', projectName);
-                }
-                
-                // If no meaningful project name, prompt user
-                if (!projectName) {
-                    console.log('Prompting for project name...');
-                    projectName = await showProjectNameModal();
-                    if (!projectName || projectName.trim() === '') {
-                        showStatus('Project name is required to save', 'error');
-                        saveBtn.disabled = false;
-                        saveBtn.innerHTML = '<i class="fas fa-save"></i> Save';
-                        return;
+                const backup = {
+                    content: content,
+                    projectName: projectName,
+                    timestamp: Date.now(),
+                    uniqueId: uniqueId
+                };
+                localStorage.setItem(`editor_backup_${uniqueId}`, JSON.stringify(backup));
+                console.log('Content backed up to local storage');
+            } catch (error) {
+                console.warn('Failed to backup to local storage:', error);
+            }
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const backup = localStorage.getItem(`editor_backup_${uniqueId}`);
+                if (backup) {
+                    const data = JSON.parse(backup);
+                    // Check if backup is recent (within last hour)
+                    if (Date.now() - data.timestamp < 3600000) {
+                        return data;
                     }
-                    projectName = projectName.trim();
-                    console.log('User entered project name:', projectName);
                 }
+            } catch (error) {
+                console.warn('Failed to load from local storage:', error);
+            }
+            return null;
+        }
+
+        // Auto-save function
+        async function autoSave() {
+            if (!unsavedChanges) return;
+            
+            try {
+                const content = editor.innerHTML;
+                const projectName = document.title || 'Auto-saved Document';
                 
-                // Create the full HTML document
-                const htmlContent = `
-<!DOCTYPE html>
+                // Save to local storage first
+                saveToLocalStorage(content, projectName);
+                
+                // Try to save to server if we have a token
+                if (editToken) {
+                    const htmlContent = createFullHTMLDocument(content, projectName);
+                    const response = await fetch(`/api/save/${uniqueId}?token=${encodeURIComponent(editToken)}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            content: htmlContent,
+                            project_name: projectName
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success) {
+                            lastSavedContent = content;
+                            unsavedChanges = false;
+                            saveAttempts = 0;
+                            console.log('Auto-save successful');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn('Auto-save failed:', error);
+            }
+        }
+
+        // Create full HTML document
+        function createFullHTMLDocument(content, projectName) {
+            return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -2359,12 +2453,79 @@
 </head>
 <body>
     <div class="main-content">
-        ${editor.innerHTML}
+        ${content}
     </div>
 </body>
 </html>`;
+        }
 
-                const response = await fetch(`/api/save/${uniqueId}?token=${encodeURIComponent(editToken || '')}` , {
+        // Track content changes for auto-save
+        editor.addEventListener('input', () => {
+            unsavedChanges = true;
+            // Start auto-save after first change
+            if (!autoSaveInterval) {
+                startAutoSave();
+            }
+        });
+
+        // Warn user before leaving page with unsaved changes
+        window.addEventListener('beforeunload', (e) => {
+            if (unsavedChanges) {
+                e.preventDefault();
+                e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+                return e.returnValue;
+            }
+        });
+
+        // Auto-save on page visibility change (when user switches tabs)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && unsavedChanges) {
+                // User is switching away from the page, try to auto-save
+                autoSave();
+            }
+        });
+
+        // Enhanced save button functionality
+        saveBtn.addEventListener('click', async () => {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            try {
+                // Ensure we have an edit token
+                await ensureEditToken();
+                
+                // Get project name
+                let projectName = '';
+                const currentTitle = document.querySelector('title');
+                
+                if (currentTitle && 
+                    currentTitle.textContent !== 'Edited Document' && 
+                    currentTitle.textContent !== 'Untitled Document' &&
+                    currentTitle.textContent !== 'New Project' &&
+                    currentTitle.textContent !== 'Documenta — Editor') {
+                    projectName = currentTitle.textContent;
+                }
+                
+                // If no meaningful project name, prompt user
+                if (!projectName) {
+                    projectName = await showProjectNameModal();
+                    if (!projectName || projectName.trim() === '') {
+                        showStatus('Project name is required to save', 'error');
+                        saveBtn.disabled = false;
+                        saveBtn.innerHTML = '<i class="fas fa-save"></i> Save';
+                        return;
+                    }
+                    projectName = projectName.trim();
+                }
+                
+                // Create the full HTML document
+                const htmlContent = createFullHTMLDocument(editor.innerHTML, projectName);
+                
+                // Save to local storage first as backup
+                saveToLocalStorage(editor.innerHTML, projectName);
+                
+                // Attempt to save to server
+                const response = await fetch(`/api/save/${uniqueId}?token=${encodeURIComponent(editToken || '')}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2379,14 +2540,32 @@
                 
                 if (result.success) {
                     showStatus(`Project "${projectName}" saved successfully!`, 'success');
-                    // Update the page title to show the project name
                     document.title = projectName;
+                    lastSavedContent = editor.innerHTML;
+                    unsavedChanges = false;
+                    saveAttempts = 0;
+                    
+                    // Start auto-save after successful save
+                    startAutoSave();
                 } else {
                     throw new Error(result.error || 'Failed to save document');
                 }
 
             } catch (error) {
+                saveAttempts++;
                 showStatus(`Error saving document: ${error.message}`, 'error');
+                
+                // Offer recovery options
+                if (saveAttempts >= MAX_SAVE_ATTEMPTS) {
+                    const backup = loadFromLocalStorage();
+                    if (backup) {
+                        const recover = confirm(`Save failed after ${MAX_SAVE_ATTEMPTS} attempts. Would you like to recover your content from the last backup?`);
+                        if (recover) {
+                            editor.innerHTML = backup.content;
+                            showStatus('Content recovered from backup', 'info');
+                        }
+                    }
+                }
             } finally {
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = '<i class="fas fa-save"></i> Save';
@@ -2453,6 +2632,22 @@
 
         // Load content when page loads
         loadContent();
+
+        // Check for recovery on page load
+        window.addEventListener('load', () => {
+            const backup = loadFromLocalStorage();
+            if (backup) {
+                const recover = confirm('A backup of your content was found. Would you like to recover it?');
+                if (recover) {
+                    editor.innerHTML = backup.content;
+                    if (backup.projectName) {
+                        document.title = backup.projectName;
+                    }
+                    showStatus('Content recovered from backup', 'info');
+                    unsavedChanges = true;
+                }
+            }
+        });
 
         // Selection toolbar event listeners
         document.addEventListener('DOMContentLoaded', () => {
