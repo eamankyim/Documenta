@@ -4,15 +4,21 @@ from werkzeug.utils import secure_filename
 from pdf_to_webpage import PDFToHTMLConverter
 import uuid
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import re
 import secrets
+from models import db, User, Project, Token, ResetToken
+from config import config
 
+# Create Flask app
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['OUTPUT_FOLDER'] = 'outputs'
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
-app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-me-in-production')
+
+# Configure the app based on environment
+config_name = os.environ.get('FLASK_ENV', 'development')
+app.config.from_object(config[config_name])
+
+# Initialize database
+db.init_app(app)
 
 # Ensure directories exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -21,23 +27,7 @@ os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
 ALLOWED_EXTENSIONS = {'pdf'}
 CONVERSION_ENABLED = False  # Disable PDF extraction/conversion; use as formatting tool only
 
-# --- Simple user store (file-based but with better persistence) ---
-def _load_users():
-    try:
-        users_file = os.path.join(app.config['OUTPUT_FOLDER'], 'users.json')
-        if os.path.exists(users_file):
-            with open(users_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-    except Exception:
-        pass
-    return {}
-
-def _save_users(users):
-    users_file = os.path.join(app.config['OUTPUT_FOLDER'], 'users.json')
-    os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
-    with open(users_file, 'w', encoding='utf-8') as f:
-        json.dump(users, f, indent=2)
-
+# --- Database-based user management ---
 def _valid_email(email: str) -> bool:
     return bool(email) and re.match(r'^\S+@\S+\.\S+$', email)
 
@@ -48,12 +38,12 @@ def _is_authenticated() -> bool:
     return bool(_current_user_email())
 
 def _get_user_plan() -> str:
-    """Get the current user's plan"""
+    """Get the current user's plan from database"""
     if not _is_authenticated():
         return None
-    users = _load_users()
     email = _current_user_email()
-    return users.get(email, {}).get('plan', 'Free')
+    user = User.query.filter_by(email=email).first()
+    return user.plan if user else 'Free'
 
 def _can_create_projects() -> bool:
     """Check if current user can create projects (not Free plan)"""
@@ -65,36 +55,22 @@ def _require_auth():
         return redirect(url_for('signin', next=request.path))
     return None
 
-# Simple token store persisted to a JSON file
-def _load_tokens():
-    try:
-        tokens_file = os.path.join(app.config['OUTPUT_FOLDER'], 'tokens.json')
-        if os.path.exists(tokens_file):
-            with open(tokens_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-    except Exception:
-        pass
-    return {}
-
-def _save_tokens(tokens):
-    tokens_file = os.path.join(app.config['OUTPUT_FOLDER'], 'tokens.json')
-    os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
-    with open(tokens_file, 'w', encoding='utf-8') as f:
-        json.dump(tokens, f, indent=2)
-
+# Database-based token management
 def _get_or_create_token(unique_id):
-    tokens = _load_tokens()
-    tok = tokens.get(unique_id)
-    if not tok:
+    """Get or create token for a project from database"""
+    token_record = Token.query.filter_by(unique_id=unique_id).first()
+    if not token_record:
         tok = uuid.uuid4().hex
-        tokens[unique_id] = tok
-        _save_tokens(tokens)
-    return tok
+        token_record = Token(unique_id=unique_id, token=tok)
+        db.session.add(token_record)
+        db.session.commit()
+        return tok
+    return token_record.token
 
 def _verify_token(unique_id, provided):
-    tokens = _load_tokens()
-    expected = tokens.get(unique_id)
-    return bool(expected) and provided == expected
+    """Verify token for a project from database"""
+    token_record = Token.query.filter_by(unique_id=unique_id).first()
+    return bool(token_record) and token_record.token == provided
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -113,36 +89,7 @@ def projects():
 def site_home():
     return render_template('website_home.html')
 
-@app.route('/pricing')
-def pricing():
-    return render_template('pricing.html')
-
-@app.route('/upgrade-plan', methods=['POST'])
-def upgrade_plan():
-    if not _is_authenticated():
-        return jsonify({'error': 'Authentication required'}), 401
-    
-    data = request.get_json()
-    plan = data.get('plan')
-    
-    if plan not in ['Pro', 'Enterprise']:
-        return jsonify({'error': 'Invalid plan'}), 400
-    
-    users = _load_users()
-    email = _current_user_email()
-    
-    if email in users:
-        users[email]['plan'] = plan
-        users[email]['plan_updated_at'] = datetime.utcnow().isoformat()
-        _save_users(users)
-        
-        return jsonify({
-            'success': True,
-            'plan': plan,
-            'message': f'Successfully upgraded to {plan} plan!'
-        })
-    
-    return jsonify({'error': 'User not found'}), 404
+# Removed duplicate pricing and upgrade-plan routes
 
 # --- Auth routes ---
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -155,6 +102,7 @@ def signup():
         password = request.form.get('password') or ''
         confirm = request.form.get('confirm') or ''
         error = None
+        
         if not name or not email or not password:
             error = 'All fields are required'
         elif not _valid_email(email):
@@ -163,21 +111,29 @@ def signup():
             error = 'Password must be at least 6 characters'
         elif password != confirm:
             error = 'Passwords do not match'
-        users = _load_users()
-        if not error and email in users:
+        
+        # Check if user already exists in database
+        existing_user = User.query.filter_by(email=email).first()
+        if not error and existing_user:
             error = 'An account with that email already exists'
+        
         if error:
             return render_template('signup.html', error=error, name=name, email=email)
-        users[email] = {
-            'name': name,
-            'email': email,
-            'password_hash': generate_password_hash(password),
-            'created_at': datetime.utcnow().isoformat(),
-            'plan': 'Free',
-        }
-        _save_users(users)
+        
+        # Create new user in database
+        user = User(
+            name=name,
+            email=email,
+            plan='Free'
+        )
+        user.set_password(password)
+        
+        db.session.add(user)
+        db.session.commit()
+        
         session['user_email'] = email
         return redirect(url_for('pricing'))
+    
     return render_template('signup.html')
 
 @app.route('/signin', methods=['GET', 'POST'])
@@ -185,13 +141,17 @@ def signin():
     if request.method == 'POST':
         email = (request.form.get('email') or '').strip().lower()
         password = request.form.get('password') or ''
-        users = _load_users()
-        user = users.get(email)
-        if not user or not check_password_hash(user.get('password_hash', ''), password):
+        
+        # Get user from database
+        user = User.query.filter_by(email=email).first()
+        
+        if not user or not user.check_password(password):
             return render_template('signin.html', error='Invalid email or password', email=email)
+        
         session['user_email'] = email
         next_url = request.args.get('next')
         return redirect(next_url or url_for('projects'))
+    
     return render_template('signin.html')
 
 @app.route('/logout')
@@ -203,9 +163,24 @@ def logout():
 def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
-        users = _load_users()
         
-        if email in users:
+        # Check if user exists in database
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            # Generate reset token
+            token = secrets.token_urlsafe(32)
+            expires = datetime.now(timezone.utc) + timedelta(hours=24)
+            
+            # Save reset token to database
+            reset_token = ResetToken(
+                email=email,
+                token=token,
+                expires=expires
+            )
+            db.session.add(reset_token)
+            db.session.commit()
+            
             # In a real app, you'd send an email here
             flash('If an account with that email exists, a password reset link has been sent.', 'info')
         else:
@@ -218,21 +193,49 @@ def forgot_password():
 
 @app.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
-    # For now, just redirect to signin
-    # In a real app, you'd verify the token and allow password reset
-    flash('Password reset functionality is not yet implemented.', 'info')
-    return redirect(url_for('signin'))
+    # Find valid reset token
+    reset_token = ResetToken.query.filter_by(token=token).first()
+    
+    if not reset_token or reset_token.expires < datetime.now(timezone.utc):
+        flash('Invalid or expired reset token.', 'error')
+        return redirect(url_for('signin'))
+    
+    if request.method == 'POST':
+        password = request.form.get('password')
+        confirm = request.form.get('confirm')
+        
+        if not password or len(password) < 6:
+            flash('Password must be at least 6 characters.', 'error')
+        elif password != confirm:
+            flash('Passwords do not match.', 'error')
+        else:
+            # Update user password
+            user = User.query.filter_by(email=reset_token.email).first()
+            if user:
+                user.set_password(password)
+                db.session.commit()
+                
+                # Delete used reset token
+                db.session.delete(reset_token)
+                db.session.commit()
+                
+                flash('Password updated successfully. Please sign in with your new password.', 'success')
+                return redirect(url_for('signin'))
+            else:
+                flash('User not found.', 'error')
+    
+    return render_template('reset_password.html', token=token)
 
 @app.route('/api/me')
 def api_me():
-    users = _load_users()
     email = _current_user_email()
-    user = users.get(email) if email else None
+    user = User.query.filter_by(email=email).first() if email else None
+    
     return jsonify({
         'authenticated': bool(user),
         'email': email,
-        'name': (user or {}).get('name'),
-        'plan': (user or {}).get('plan', 'Free'),
+        'name': user.name if user else None,
+        'plan': user.plan if user else 'Free',
     })
 
 @app.route('/upload', methods=['POST'])
@@ -243,6 +246,7 @@ def upload_file():
     
     if not CONVERSION_ENABLED:
         return jsonify({'error': 'PDF conversion is currently disabled. Use New Document or Open existing.'}), 400
+    
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
     
@@ -250,31 +254,59 @@ def upload_file():
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
     
-    if file and allowed_file(file.filename):
-        # Generate unique filename
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'Invalid file type. Only PDF files are allowed.'}), 400
+    
+    try:
+        # Generate unique ID for the project
         unique_id = str(uuid.uuid4())
-        filename = secure_filename(file.filename)
-        pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{unique_id}_{filename}")
-        output_path = os.path.join(app.config['OUTPUT_FOLDER'], f"{unique_id}_converted.html")
         
         # Save uploaded file
-        file.save(pdf_path)
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{unique_id}_{filename}")
+        file.save(file_path)
         
-        try:
-            # Convert PDF to HTML
-            converter = PDFToHTMLConverter(pdf_path, output_path)
-            converter.generate_html()
-            
-            return jsonify({
-                'success': True,
-                'unique_id': unique_id,
-                'original_filename': filename,
-                'html_file': f"{unique_id}_converted.html"
-            })
-        except Exception as e:
-            return jsonify({'error': f'Conversion failed: {str(e)}'}), 500
-    
-    return jsonify({'error': 'Invalid file type'}), 400
+        # Convert PDF to HTML
+        converter = PDFToHTMLConverter(file_path, os.path.join(app.config['OUTPUT_FOLDER'], f"{unique_id}_converted.html"))
+        converter.generate_html()
+        
+        # Read the generated HTML content
+        output_filename = f"{unique_id}_converted.html"
+        output_path = os.path.join(app.config['OUTPUT_FOLDER'], output_filename)
+        
+        with open(output_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        
+        # Save project to database
+        project = Project(
+            unique_id=unique_id,
+            filename=output_filename,
+            title=filename.replace('.pdf', ''),
+            content=html_content,
+            size=len(html_content)
+        )
+        
+        # Associate with current user if authenticated
+        if _is_authenticated():
+            user = User.query.filter_by(email=_current_user_email()).first()
+            if user:
+                project.user_id = user.id
+        
+        db.session.add(project)
+        db.session.commit()
+        
+        # Clean up uploaded file
+        os.remove(file_path)
+        
+        return jsonify({
+            'success': True,
+            'unique_id': unique_id,
+            'filename': output_filename,
+            'message': 'File uploaded and converted successfully!'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Error processing file: {str(e)}'}), 500
 
 @app.route('/view/<unique_id>')
 def view_converted(unique_id):
@@ -562,6 +594,95 @@ def rename_project(unique_id):
     except Exception as e:
         return jsonify({'error': f'Failed to rename project: {str(e)}'}), 500
 
+# New database-based routes
+@app.route('/project/<unique_id>')
+def view_project(unique_id):
+    """View a project from the database"""
+    # Get project from database
+    project = Project.query.filter_by(unique_id=unique_id).first()
+    
+    if not project:
+        return "Project not found", 404
+    
+    # Check if token is required
+    token = request.args.get('token')
+    if token and not _verify_token(unique_id, token):
+        return "Invalid token", 403
+    
+    return project.content
+
+@app.route('/api/projects')
+def api_projects():
+    """Get projects for the current user from database"""
+    if not _is_authenticated():
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    user = User.query.filter_by(email=_current_user_email()).first()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    # Get user's projects from database
+    projects = Project.query.filter_by(user_id=user.id).order_by(Project.created_at.desc()).all()
+    
+    project_list = []
+    for project in projects:
+        project_list.append({
+            'id': project.id,
+            'unique_id': project.unique_id,
+            'filename': project.filename,
+            'title': project.title,
+            'created_at': project.created_at.isoformat(),
+            'updated_at': project.updated_at.isoformat(),
+            'size': project.size
+        })
+    
+    return jsonify(project_list)
+
+@app.route('/pricing')
+def pricing():
+    return render_template('pricing.html')
+
+@app.route('/upgrade/<plan>')
+def upgrade_plan(plan):
+    if not _is_authenticated():
+        return redirect(url_for('signin'))
+    
+    if plan not in ['Pro', 'Enterprise']:
+        flash('Invalid plan selected.', 'error')
+        return redirect(url_for('pricing'))
+    
+    # Update user plan in database
+    user = User.query.filter_by(email=_current_user_email()).first()
+    if user:
+        user.plan = plan
+        user.plan_updated_at = datetime.now(timezone.utc)
+        db.session.commit()
+        
+        flash(f'Successfully upgraded to {plan} plan!', 'success')
+    else:
+        flash('User not found.', 'error')
+    
+    return redirect(url_for('pricing'))
+
+# Error handlers
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()
+    return render_template('500.html'), 500
+
 if __name__ == '__main__':
+    # Create database tables if they don't exist
+    with app.app_context():
+        db.create_all()
+    
+    # Use PORT environment variable for Render deployment
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    print(f"Starting Flask app on port {port}")
+    print(f"Environment: {os.environ.get('FLASK_ENV', 'development')}")
+    print(f"Debug mode: {os.environ.get('FLASK_DEBUG', 'False')}")
+    
+    app.run(debug=False, host='0.0.0.0', port=port)
