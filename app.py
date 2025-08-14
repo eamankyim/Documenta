@@ -637,6 +637,16 @@ def api_projects():
     
     return jsonify(project_list)
 
+@app.route('/health')
+def health_check():
+    """Health check endpoint to keep service active"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now(timezone.utc).isoformat(),
+        'service': 'Documenta',
+        'version': '1.0.0'
+    })
+
 @app.route('/pricing')
 def pricing():
     return render_template('pricing.html')
@@ -679,11 +689,22 @@ if __name__ == '__main__':
         print("STARTING FLASK APPLICATION")
         print("=" * 50)
         
-        # Create database tables if they don't exist
+        # Initialize database tables if they don't exist (without dropping existing data)
         print("Initializing database...")
         with app.app_context():
-            db.create_all()
-        print("Database initialized successfully!")
+            # Check if tables already exist to avoid data loss
+            inspector = db.inspect(db.engine)
+            existing_tables = inspector.get_table_names()
+            
+            if not existing_tables:
+                print("No existing tables found. Creating new database schema...")
+                db.create_all()
+                print("Database schema created successfully!")
+            else:
+                print(f"Found existing tables: {existing_tables}")
+                print("Database already initialized. Skipping schema creation to preserve data.")
+                
+        print("Database initialization completed!")
         
         # Use PORT environment variable for Render deployment
         port = int(os.environ.get('PORT', 5000))
