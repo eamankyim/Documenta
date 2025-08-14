@@ -380,6 +380,58 @@
             z-index: 2;
         }
         .img-delete:hover { background: #c82333; }
+        
+        /* Enhanced pasted content styles */
+        .enhanced-table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 1rem;
+            border: 1px solid #ddd;
+        }
+        
+        .enhanced-table td,
+        .enhanced-table th {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        
+        .enhanced-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .enhanced-list {
+            margin-left: 2rem;
+            margin-bottom: 1rem;
+        }
+        
+        .enhanced-list li {
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Preserve background colors and images */
+        [style*="background-color"],
+        [style*="background-image"] {
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        
+        /* Preserve text formatting */
+        [style*="font-weight: bold"],
+        [style*="font-weight:bold"] {
+            font-weight: bold !important;
+        }
+        
+        [style*="font-style: italic"],
+        [style*="font-style:italic"] {
+            font-style: italic !important;
+        }
+        
+        [style*="text-decoration: underline"],
+        [style*="text-decoration:underline"] {
+            text-decoration: underline !important;
+        }
 
         /* Prevent button text from being editable */
         .editor button,
@@ -1540,17 +1592,22 @@
                 </span>`;
             insertHtmlIntoEditor(html);
             requestAnimationFrame(() => { enhanceImagesForEditing(); });
+            showStatus('Image pasted successfully!', 'success');
         }
 
-        // Handle paste events to detect images
+        // Enhanced paste handler for rich content
         editor.addEventListener('paste', (e) => {
             const items = e.clipboardData && e.clipboardData.items;
+            let hasImage = false;
+            
+            // Check for images first
             if (items && items.length) {
                 for (const item of items) {
                     if (item.type && item.type.indexOf('image') !== -1) {
                         const file = item.getAsFile();
                         if (file) {
                             e.preventDefault();
+                            hasImage = true;
                             const reader = new FileReader();
                             reader.onload = () => {
                                 const dataUrl = reader.result;
@@ -1562,9 +1619,166 @@
                     }
                 }
             }
-            // For non-image paste, allow default then enhance after a tick
-            setTimeout(enhanceImagesForEditing, 0);
+            
+            // Handle rich text content
+            if (!hasImage && e.clipboardData) {
+                const html = e.clipboardData.getData('text/html');
+                const text = e.clipboardData.getData('text/plain');
+                
+                if (html && html.trim()) {
+                    e.preventDefault();
+                    
+                    // Clean and enhance the pasted HTML
+                    const cleanedHtml = cleanPastedHtml(html);
+                    insertHtmlIntoEditor(cleanedHtml);
+                    
+                    // Enhance images and formatting after insertion
+                    setTimeout(() => {
+                        enhanceImagesForEditing();
+                        enhancePastedContent();
+                        showStatus('Rich content pasted with formatting preserved!', 'success');
+                    }, 10);
+                } else if (text && text.trim()) {
+                    // Handle plain text with basic formatting
+                    e.preventDefault();
+                    const formattedText = formatPlainText(text);
+                    insertHtmlIntoEditor(formattedText);
+                }
+            }
         });
+        
+        // Clean and enhance pasted HTML content
+        function cleanPastedHtml(html) {
+            // Create a temporary div to parse and clean the HTML
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            
+            // Remove unwanted elements and attributes
+            const unwantedSelectors = [
+                'script', 'style', 'meta', 'link', 'title', 'head',
+                '[style*="position: absolute"]', '[style*="position:fixed"]'
+            ];
+            
+            unwantedSelectors.forEach(selector => {
+                const elements = tempDiv.querySelectorAll(selector);
+                elements.forEach(el => el.remove());
+            });
+            
+            // Clean up inline styles but preserve important formatting
+            const allElements = tempDiv.querySelectorAll('*');
+            allElements.forEach(el => {
+                if (el.style) {
+                    // Keep important styles, remove problematic ones
+                    const keepStyles = [
+                        'color', 'background-color', 'font-weight', 'font-style', 
+                        'text-decoration', 'text-align', 'font-size', 'font-family',
+                        'border', 'border-radius', 'padding', 'margin', 'width', 'height',
+                        'display', 'list-style-type', 'background-image'
+                    ];
+                    
+                    const computedStyle = window.getComputedStyle(el);
+                    const newStyle = {};
+                    
+                    keepStyles.forEach(style => {
+                        const value = el.style[style] || computedStyle[style];
+                        if (value && value !== 'normal' && value !== 'none' && value !== '0px') {
+                            newStyle[style] = value;
+                        }
+                    });
+                    
+                    // Apply cleaned styles
+                    Object.keys(el.style).forEach(key => {
+                        el.style.removeProperty(key);
+                    });
+                    Object.assign(el.style, newStyle);
+                }
+            });
+            
+            // Convert relative URLs to absolute where possible
+            const images = tempDiv.querySelectorAll('img');
+            images.forEach(img => {
+                if (img.src && !img.src.startsWith('http') && !img.src.startsWith('data:')) {
+                    // Try to make relative URLs absolute
+                    try {
+                        img.src = new URL(img.src, window.location.href).href;
+                    } catch (e) {
+                        // If URL conversion fails, keep original
+                    }
+                }
+            });
+            
+            return tempDiv.innerHTML;
+        }
+        
+        // Format plain text with basic structure
+        function formatPlainText(text) {
+            const lines = text.split('\n');
+            const formattedLines = lines.map(line => {
+                line = line.trim();
+                if (!line) return '<br>';
+                
+                // Detect headers (lines that are all caps or start with #)
+                if (line.match(/^[A-Z\s]+$/) || line.startsWith('#')) {
+                    return `<h3>${line.replace(/^#+\s*/, '')}</h3>`;
+                }
+                
+                // Detect lists
+                if (line.match(/^[\-\*]\s/)) {
+                    return `<li>${line.replace(/^[\-\*]\s/, '')}</li>`;
+                }
+                
+                // Regular paragraph
+                return `<p>${line}</p>`;
+            });
+            
+            return formattedLines.join('');
+        }
+        
+        // Enhance pasted content with additional formatting
+        function enhancePastedContent() {
+            const editor = document.getElementById('editor');
+            
+            // Enhance tables
+            const tables = editor.querySelectorAll('table');
+            tables.forEach(table => {
+                if (!table.classList.contains('enhanced-table')) {
+                    table.classList.add('enhanced-table');
+                    table.style.borderCollapse = 'collapse';
+                    table.style.width = '100%';
+                    table.style.marginBottom = '1rem';
+                    
+                    // Style table cells
+                    const cells = table.querySelectorAll('td, th');
+                    cells.forEach(cell => {
+                        cell.style.border = '1px solid #ddd';
+                        cell.style.padding = '8px';
+                        cell.style.textAlign = 'left';
+                    });
+                }
+            });
+            
+            // Enhance lists
+            const lists = editor.querySelectorAll('ul, ol');
+            lists.forEach(list => {
+                if (!list.classList.contains('enhanced-list')) {
+                    list.classList.add('enhanced-list');
+                    list.style.marginLeft = '2rem';
+                    list.style.marginBottom = '1rem';
+                }
+            });
+            
+            // Enhance images
+            const images = editor.querySelectorAll('img');
+            images.forEach(img => {
+                if (!img.classList.contains('enhanced-image')) {
+                    img.classList.add('enhanced-image');
+                    img.style.maxWidth = '100%';
+                    img.style.height = 'auto';
+                    img.style.borderRadius = '4px';
+                    img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                }
+            });
+        }
 
         function markFlowchartCandidate(img) {
             // Wrap image if not already wrapped

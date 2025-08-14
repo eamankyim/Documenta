@@ -9,6 +9,34 @@ A web-based HTML document editor with user authentication and project management
 - Real-time editing with auto-save
 - Project sharing with secure tokens
 - Responsive design
+- **Enhanced paste functionality** - Preserve formatting, images, and styling from any source
+
+## Enhanced Paste Functionality
+
+The editor now supports rich paste operations that preserve formatting and content from various sources:
+
+### What Gets Preserved:
+- **Text formatting**: Bold, italic, underline, font sizes, colors
+- **Background colors and images**: Preserved with proper styling
+- **Tables**: Automatically formatted with borders and styling
+- **Lists**: Bullet points and numbered lists
+- **Images**: Pasted images are automatically wrapped and styled
+- **Layout**: Basic positioning and spacing
+
+### How to Use:
+1. **Copy content** from any source (Word, Google Docs, websites, etc.)
+2. **Paste in the editor** using Ctrl+V (or Cmd+V on Mac)
+3. **Content is automatically cleaned** and formatted
+4. **Images are preserved** and made editable
+5. **Tables are enhanced** with proper styling
+
+### Supported Sources:
+- Microsoft Word documents
+- Google Docs
+- Web pages
+- PDF content (when copied as text)
+- Email content
+- Any rich text source
 
 ## Deployment on Render
 
