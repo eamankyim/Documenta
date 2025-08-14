@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Simple database test script to verify PostgreSQL setup.
-Run this after setting up your database to ensure everything is working.
+Database test script to verify PostgreSQL connection and operations.
+Run this script to test if your database setup is working correctly.
 """
 
 import os
@@ -9,22 +9,35 @@ import sys
 from flask import Flask
 from models import db, User, Project, Token, ResetToken
 
+def transform_database_url(url):
+    """Transform postgresql:// URLs to use psycopg3 instead of psycopg2"""
+    if url and url.startswith('postgresql://'):
+        # Replace postgresql:// with postgresql+psycopg:// to force psycopg3
+        return url.replace('postgresql://', 'postgresql+psycopg://', 1)
+    return url
+
 def test_database():
-    """Test database connection and basic operations"""
-    print("Testing database connection...")
+    """Test the database connection and basic operations"""
+    print("🧪 Testing PostgreSQL database connection and operations...")
+    print("=" * 60)
     
     # Create a minimal Flask app
     app = Flask(__name__)
     
-    # Get database URL from environment
+    # Get database URL from environment and transform it
     database_url = os.environ.get('DATABASE_URL')
     if not database_url:
         print("ERROR: DATABASE_URL environment variable not set!")
         print("Please set DATABASE_URL to your PostgreSQL connection string.")
         return False
     
+    # Transform URL to use psycopg3
+    transformed_url = transform_database_url(database_url)
+    print(f"Original DATABASE_URL: {database_url}")
+    print(f"Transformed to use psycopg3: {transformed_url}")
+    
     # Configure the app
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    app.config['SQLALCHEMY_DATABASE_URI'] = transformed_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SECRET_KEY'] = 'test-secret-key'
     

@@ -9,18 +9,30 @@ import sys
 from flask import Flask
 from models import init_db
 
+def transform_database_url(url):
+    """Transform postgresql:// URLs to use psycopg3 instead of psycopg2"""
+    if url and url.startswith('postgresql://'):
+        # Replace postgresql:// with postgresql+psycopg:// to force psycopg3
+        return url.replace('postgresql://', 'postgresql+psycopg://', 1)
+    return url
+
 def create_app():
     """Create a minimal Flask app for database operations"""
     app = Flask(__name__)
     
-    # Get database URL from environment
+    # Get database URL from environment and transform it
     database_url = os.environ.get('DATABASE_URL')
     if not database_url:
         print("ERROR: DATABASE_URL environment variable not set!")
         sys.exit(1)
     
+    # Transform URL to use psycopg3
+    transformed_url = transform_database_url(database_url)
+    print(f"Original DATABASE_URL: {database_url}")
+    print(f"Transformed to use psycopg3: {transformed_url}")
+    
     # Configure the app
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    app.config['SQLALCHEMY_DATABASE_URI'] = transformed_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-secret-key')
     
