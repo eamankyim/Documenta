@@ -79,38 +79,89 @@
             margin: 0 auto;
             padding: 30px;
             display: flex;
-            gap: 30px;
+            gap: 0;
+            margin-left: 300px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content.sidebar-collapsed {
+            margin-left: 0;
         }
 
         .sidebar {
-            width: 280px;
+            width: 300px;
             background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            padding: 20px;
-            height: calc(100vh - 200px);
-            position: sticky;
-            top: 100px;
+            border-radius: 0;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            padding: 0;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
             overflow-y: auto;
+            overflow-x: hidden;
+            flex-shrink: 0;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-toggle {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-toggle:hover {
+            background: #5a6fd8;
+            transform: scale(1.1);
+        }
+
+        .sidebar-toggle.collapsed {
+            left: 20px;
         }
 
         .sidebar-title {
             font-size: 1.2rem;
             font-weight: 600;
             color: #2c3e50;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
+            margin: 0;
+            padding: 20px 20px 15px 20px;
             border-bottom: 2px solid #e9ecef;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            background: #f8f9fa;
         }
 
         .toc-list {
             list-style: none;
             margin: 0;
             padding: 0;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .toc-item {
             margin-bottom: 4px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .toc-group {
@@ -163,6 +214,8 @@
             overflow: hidden;
             transition: max-height 0.3s ease;
             margin-left: 16px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .toc-group-content.expanded {
@@ -178,6 +231,9 @@
             transition: all 0.3s ease;
             font-size: 0.85rem;
             margin-left: 8px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
         }
 
         .toc-link:hover {
@@ -222,6 +278,8 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             padding: 40px;
             min-height: 800px;
+            margin: 0 auto;
+            max-width: 100%;
         }
 
         /* Ensure anchored headings do not hide beneath the sticky header */
@@ -260,12 +318,18 @@
 
         @media (max-width: 1024px) {
             .main-content {
-                flex-direction: column;
+                margin-left: 0;
             }
 
             .sidebar {
                 width: 100%;
-                position: static;
+                position: fixed;
+                height: 100vh;
+                z-index: 1000;
+            }
+
+            .sidebar-toggle {
+                display: none;
             }
         }
 
@@ -431,6 +495,10 @@
         </div>
     </div>
 
+    <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle Sidebar">
+        <i class="fas fa-bars"></i>
+    </button>
+    
     <div class="main-content">
         <div class="sidebar">
             <div class="sidebar-title">
@@ -1083,6 +1151,49 @@
             `;
             return modal;
         }
+
+        // --- Sidebar Toggle Functionality ---
+        (function() {
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+            
+            if (!sidebarToggle || !sidebar || !mainContent) return;
+            
+            // Check if sidebar was previously collapsed
+            const wasCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+            if (wasCollapsed) {
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('sidebar-collapsed');
+                sidebarToggle.classList.add('collapsed');
+            }
+            
+            sidebarToggle.addEventListener('click', () => {
+                const isCollapsed = sidebar.classList.contains('collapsed');
+                
+                if (isCollapsed) {
+                    // Expand sidebar
+                    sidebar.classList.remove('collapsed');
+                    mainContent.classList.remove('sidebar-collapsed');
+                    sidebarToggle.classList.remove('collapsed');
+                    localStorage.setItem('sidebar-collapsed', 'false');
+                } else {
+                    // Collapse sidebar
+                    sidebar.classList.add('collapsed');
+                    mainContent.classList.add('sidebar-collapsed');
+                    sidebarToggle.classList.add('collapsed');
+                    localStorage.setItem('sidebar-collapsed', 'true');
+                }
+            });
+            
+            // Keyboard shortcut: Ctrl/Cmd + B to toggle sidebar
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                    e.preventDefault();
+                    sidebarToggle.click();
+                }
+            });
+        })();
     </script>
 </body>
 </html> 
