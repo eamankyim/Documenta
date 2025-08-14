@@ -34,6 +34,28 @@ def _check_db_connection():
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
 
+def sync_missing_files_from_database():
+    """Recreate missing files from database content after Render restart"""
+    try:
+        with app.app_context():
+            projects = Project.query.all()
+            for project in projects:
+                html_file = f"{project.unique_id}_converted.html"
+                html_path = os.path.join(app.config['OUTPUT_FOLDER'], html_file)
+                
+                if not os.path.exists(html_path) and project.content:
+                    try:
+                        with open(html_path, 'w', encoding='utf-8') as f:
+                            f.write(project.content)
+                        print(f"Recreated missing file: {html_file}")
+                    except Exception as e:
+                        print(f"Failed to recreate file {html_file}: {e}")
+    except Exception as e:
+        print(f"Error syncing files from database: {e}")
+
+# Sync missing files on startup
+sync_missing_files_from_database()
+
 ALLOWED_EXTENSIONS = {'pdf'}
 CONVERSION_ENABLED = False  # Disable PDF extraction/conversion; use as formatting tool only
 
@@ -344,11 +366,10 @@ def edit_converted(unique_id):
         flash('Free plan users cannot edit projects. Please upgrade to Pro or Enterprise to edit projects.', 'error')
         return redirect(url_for('pricing'))
     
-    html_file = f"{unique_id}_converted.html"
-    html_path = os.path.join(app.config['OUTPUT_FOLDER'], html_file)
-    
-    if not os.path.exists(html_path):
-        return "File not found", 404
+    # Check if project exists in database first
+    project = Project.query.filter_by(unique_id=unique_id).first()
+    if not project:
+        return "Project not found", 404
     
     # Enforce token for editing
     token = request.args.get('token')
@@ -359,17 +380,33 @@ def edit_converted(unique_id):
 
 @app.route('/api/content/<unique_id>')
 def get_content(unique_id):
-    # First try to get content from database (more reliable)
+    # ALWAYS try database first (persistent storage)
     project = Project.query.filter_by(unique_id=unique_id).first()
     if project and project.content:
+        # If we have database content, also recreate the file for editing
+        try:
+            html_file = f"{unique_id}_converted.html"
+            html_path = os.path.join(app.config['OUTPUT_FOLDER'], html_file)
+            
+            # Ensure output directory exists
+            os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
+            
+            # Recreate the file from database content
+            with open(html_path, 'w', encoding='utf-8') as f:
+                f.write(project.content)
+            
+            print(f"Recreated file {html_file} from database content")
+        except Exception as e:
+            print(f"Warning: Could not recreate file from database: {e}")
+        
         return jsonify({'content': project.content})
     
-    # Fallback to file system if database doesn't have content
+    # Only fallback to file system if database has no content
     html_file = f"{unique_id}_converted.html"
     html_path = os.path.join(app.config['OUTPUT_FOLDER'], html_file)
     
     if not os.path.exists(html_path):
-        return jsonify({'error': 'File not found'}), 404
+        return jsonify({'error': 'Project not found in database or file system'}), 404
     
     with open(html_path, 'r', encoding='utf-8') as f:
         content = f.read()
@@ -572,6 +609,29 @@ def list_outputs():
     auth_resp = _require_auth()
     if auth_resp:
         return auth_resp
+    
+    # Get user's projects from database (persistent storage)
+    if _is_authenticated():
+        try:
+            user = User.query.filter_by(email=_current_user_email()).first()
+            if user:
+                projects = Project.query.filter_by(user_id=user.id).order_by(Project.updated_at.desc()).all()
+                
+                documents = []
+                for project in projects:
+                    documents.append({
+                        'unique_id': project.unique_id,
+                        'filename': project.filename,
+                        'modified': project.updated_at.isoformat(),
+                        'size': project.size,
+                        'title': project.title or 'Untitled Document',
+                    })
+                
+                return jsonify({'documents': documents})
+        except Exception as e:
+            print(f"Database list error: {e}")
+    
+    # Fallback to file system if database fails
     outputs_dir = app.config['OUTPUT_FOLDER']
     if not os.path.exists(outputs_dir):
         return jsonify({'documents': []})
@@ -617,10 +677,19 @@ def get_token(unique_id):
     auth_resp = _require_auth()
     if auth_resp:
         return auth_resp
+    
+    # Check if project exists in database first
+    project = Project.query.filter_by(unique_id=unique_id).first()
+    if project:
+        tok = _get_or_create_token(unique_id)
+        return jsonify({'token': tok})
+    
+    # Fallback to file system check
     html_file = f"{unique_id}_converted.html"
     html_path = os.path.join(app.config['OUTPUT_FOLDER'], html_file)
     if not os.path.exists(html_path):
-        return jsonify({'error': 'File not found'}), 404
+        return jsonify({'error': 'Project not found'}), 404
+    
     tok = _get_or_create_token(unique_id)
     return jsonify({'token': tok})
 
