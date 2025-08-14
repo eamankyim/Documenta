@@ -4,7 +4,7 @@ from werkzeug.utils import secure_filename
 from pdf_to_webpage import PDFToHTMLConverter
 import uuid
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import re
 import secrets
 from models import db, User, Project, Token, ResetToken
@@ -170,7 +170,7 @@ def forgot_password():
         if user:
             # Generate reset token
             token = secrets.token_urlsafe(32)
-            expires = datetime.utcnow() + timedelta(hours=24)
+            expires = datetime.now(timezone.utc) + timedelta(hours=24)
             
             # Save reset token to database
             reset_token = ResetToken(
@@ -196,7 +196,7 @@ def reset_password(token):
     # Find valid reset token
     reset_token = ResetToken.query.filter_by(token=token).first()
     
-    if not reset_token or reset_token.expires < datetime.utcnow():
+    if not reset_token or reset_token.expires < datetime.now(timezone.utc):
         flash('Invalid or expired reset token.', 'error')
         return redirect(url_for('signin'))
     
@@ -655,7 +655,7 @@ def upgrade_plan(plan):
     user = User.query.filter_by(email=_current_user_email()).first()
     if user:
         user.plan = plan
-        user.plan_updated_at = datetime.utcnow()
+        user.plan_updated_at = datetime.now(timezone.utc)
         db.session.commit()
         
         flash(f'Successfully upgraded to {plan} plan!', 'success')
@@ -679,4 +679,6 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Use PORT environment variable for Render deployment
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)
