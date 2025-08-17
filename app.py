@@ -346,10 +346,41 @@ def upload_file():
 
 @app.route('/view/<unique_id>')
 def view_converted(unique_id):
+    """View a converted document - supports both direct access and shared access"""
+    # Check if this is a shared view
+    is_shared = request.args.get('share') == '1'
+    share_email = request.args.get('email')
+    share_token = request.args.get('token')
+    
+    # Check if project exists in database first
+    project = Project.query.filter_by(unique_id=unique_id).first()
+    if not project:
+        return "Project not found", 404
+    
+    # For shared views, verify the share token
+    if is_shared:
+        if not share_token or not _verify_token(unique_id, share_token):
+            return "Invalid or expired share link", 403
+    
+    # Check if HTML file exists, if not, try to recreate from database
     html_file = f"{unique_id}_converted.html"
     html_path = os.path.join(app.config['OUTPUT_FOLDER'], html_file)
     
-    if not os.path.exists(html_path):
+    if not os.path.exists(html_path) and project.content:
+        try:
+            # Ensure output directory exists
+            os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
+            
+            # Recreate the file from database content
+            with open(html_path, 'w', encoding='utf-8') as f:
+                f.write(project.content)
+            
+            print(f"Recreated file {html_file} from database content for viewing")
+        except Exception as e:
+            print(f"Warning: Could not recreate file from database for viewing: {e}")
+    
+    # If file still doesn't exist and no database content, return 404
+    if not os.path.exists(html_path) and not project.content:
         return "File not found", 404
     
     return render_template('viewer.html', unique_id=unique_id)
@@ -841,6 +872,88 @@ def upgrade_plan(plan):
         flash('User not found.', 'error')
     
     return redirect(url_for('pricing'))
+
+@app.route('/api/share/<unique_id>', methods=['POST'])
+def share_document(unique_id):
+    """Share a document with other users by email"""
+    # Check if project exists
+    project = Project.query.filter_by(unique_id=unique_id).first()
+    if not project:
+        return jsonify({'error': 'Project not found'}), 404
+    
+    # If token is provided, verify it
+    token = request.args.get('token')
+    if token and not _verify_token(unique_id, token):
+        return jsonify({'error': 'Invalid token'}), 403
+    
+    # Get share data from request
+    data = request.get_json()
+    if not data or 'emails' not in data:
+        return jsonify({'error': 'No emails provided'}), 400
+    
+    emails = data.get('emails', [])
+    message = data.get('message', '')
+    
+    if not emails:
+        return jsonify({'error': 'No emails provided'}), 400
+    
+    # Validate emails
+    valid_emails = []
+    for email in emails:
+        if _valid_email(email.strip()):
+            valid_emails.append(email.strip())
+    
+    if not valid_emails:
+        return jsonify({'error': 'No valid emails provided'}), 400
+    
+    # Generate share links for each email
+    share_links = []
+    for email in valid_emails:
+        # Create a unique share token for this email
+        share_token = _get_or_create_token(unique_id)
+        share_link = f"{request.host_url.rstrip('/')}/view/{unique_id}?share=1&email={email}&token={share_token}"
+        share_links.append({
+            'email': email,
+            'link': share_link
+        })
+    
+    # TODO: In a production environment, you would send emails here
+    # For now, we'll just return the share links
+    return jsonify({
+        'success': True,
+        'message': f'Document shared with {len(valid_emails)} recipients',
+        'share_links': share_links
+    })
+
+@app.route('/api/shared_documents')
+def get_shared_documents():
+    """Get list of documents shared with the current user"""
+    # For now, return all documents that exist (in a real app, you'd track who shared what with whom)
+    # This is a simplified implementation
+    try:
+        projects = Project.query.all()
+        shared_docs = []
+        
+        for project in projects:
+            # Check if there's a token for this project (indicating it can be shared)
+            token_record = Token.query.filter_by(unique_id=project.unique_id).first()
+            if token_record:
+                shared_docs.append({
+                    'unique_id': project.unique_id,
+                    'title': project.title or project.filename,
+                    'filename': project.filename,
+                    'created_at': project.created_at.isoformat() if project.created_at else None,
+                    'updated_at': project.updated_at.isoformat() if project.updated_at else None,
+                    'size': project.size,
+                    'share_link': f"{request.host_url.rstrip('/')}/view/{project.unique_id}?share=1&token={token_record.token}"
+                })
+        
+        return jsonify({
+            'success': True,
+            'documents': shared_docs
+        })
+    except Exception as e:
+        return jsonify({'error': f'Error retrieving shared documents: {str(e)}'}), 500
 
 # Error handlers
 @app.errorhandler(404)

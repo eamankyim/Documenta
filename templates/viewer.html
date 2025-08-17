@@ -109,6 +109,47 @@
             transform: translateX(-100%);
         }
 
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 20px 15px 20px;
+            border-bottom: 2px solid #e9ecef;
+            background: #f8f9fa;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .sidebar-close {
+            background: none;
+            border: none;
+            color: #6c757d;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            display: none; /* Hidden by default on desktop */
+        }
+
+        .sidebar-close:hover {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .sidebar-close:active {
+            transform: scale(0.95);
+        }
+
+        .sidebar-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin: 0;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
         .sidebar-toggle {
             position: fixed;
             top: 20px;
@@ -136,18 +177,6 @@
 
         .sidebar-toggle.collapsed {
             left: 20px;
-        }
-
-        .sidebar-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: #2c3e50;
-            margin: 0;
-            padding: 20px 20px 15px 20px;
-            border-bottom: 2px solid #e9ecef;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            background: #f8f9fa;
         }
 
         .toc-list {
@@ -325,31 +354,255 @@
                 width: 100%;
                 position: fixed;
                 height: 100vh;
-                z-index: 1000;
+                z-index: 1001;
+            }
+
+            .sidebar-close {
+                display: block; /* Always show close button on mobile */
             }
 
             .sidebar-toggle {
-                display: none;
+                display: block;
+                z-index: 1002;
+            }
+
+            .content-area {
+                margin: 0;
+                padding: 20px;
+                border-radius: 0;
             }
         }
 
         @media (max-width: 768px) {
             .header-content {
+                padding: 15px;
                 flex-direction: column;
                 gap: 15px;
+                align-items: flex-start;
             }
 
             .header-actions {
                 width: 100%;
-                justify-content: center;
+                justify-content: flex-start;
+                gap: 10px;
+            }
+
+            .btn {
+                padding: 8px 16px;
+                font-size: 0.85rem;
             }
 
             .main-content {
-                padding: 20px;
+                padding: 15px;
             }
 
             .content-area {
                 padding: 20px;
+                margin: 0;
+            }
+
+            .sidebar {
+                width: 100%;
+                max-width: 100vw;
+            }
+
+            .sidebar-header {
+                padding: 15px;
+            }
+
+            .sidebar-title {
+                font-size: 1.1rem;
+            }
+
+            .toc-list {
+                padding: 0 15px;
+            }
+
+            .toc-item {
+                margin-bottom: 8px;
+            }
+
+            .toc-link {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+
+            .toc-group-header {
+                padding: 10px 12px;
+                font-size: 0.9rem;
+            }
+
+            .toc-group-content {
+                margin-left: 12px;
+            }
+
+            .sidebar-toggle {
+                top: 15px;
+                left: 15px;
+                width: 45px;
+                height: 45px;
+                font-size: 1.1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header-content {
+                padding: 12px;
+            }
+
+            .main-content {
+                padding: 10px;
+            }
+
+            .content-area {
+                padding: 15px;
+            }
+
+            .sidebar-header {
+                padding: 12px;
+            }
+
+            .sidebar-title {
+                font-size: 1rem;
+            }
+
+            .toc-list {
+                padding: 0 12px;
+            }
+
+            .toc-link {
+                padding: 6px 10px;
+                font-size: 0.85rem;
+            }
+
+            .toc-group-header {
+                padding: 8px 10px;
+                font-size: 0.85rem;
+            }
+
+            .sidebar-toggle {
+                top: 12px;
+                left: 12px;
+                width: 40px;
+                height: 40px;
+                font-size: 1rem;
+            }
+
+            .btn {
+                padding: 6px 12px;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Touch-friendly improvements for mobile */
+        @media (hover: none) and (pointer: coarse) {
+            .toc-link {
+                min-height: 44px; /* Minimum touch target size */
+                display: flex;
+                align-items: center;
+            }
+
+            .toc-group-header {
+                min-height: 44px;
+                display: flex;
+                align-items: center;
+            }
+
+            .sidebar-close {
+                min-width: 44px;
+                min-height: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .sidebar-toggle {
+                min-width: 44px;
+                min-height: 44px;
+            }
+        }
+
+        /* Improved mobile scrolling */
+        @media (max-width: 1024px) {
+            .sidebar {
+                -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+                scrollbar-width: none; /* Hide scrollbar on Firefox */
+                -ms-overflow-style: none; /* Hide scrollbar on IE/Edge */
+            }
+
+            .sidebar::-webkit-scrollbar {
+                display: none; /* Hide scrollbar on WebKit browsers */
+            }
+
+            .content-area {
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+
+        /* Better mobile button sizing */
+        @media (max-width: 768px) {
+            .btn {
+                min-height: 44px;
+                min-width: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .sidebar-toggle {
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            }
+
+            .sidebar-toggle:active {
+                transform: scale(0.95);
+            }
+        }
+
+        /* Mobile-first improvements */
+        @media (max-width: 480px) {
+            .header {
+                padding: 10px;
+            }
+
+            .logo {
+                font-size: 1.3rem;
+            }
+
+            .content-area h1,
+            .content-area h2,
+            .content-area h3,
+            .content-area h4,
+            .content-area h5,
+            .content-area h6 {
+                scroll-margin-top: 80px; /* Adjusted for mobile header */
+            }
+
+            /* Ensure content is readable on small screens */
+            .content-area {
+                font-size: 16px; /* Prevent zoom on iOS */
+                line-height: 1.6;
+            }
+
+            .content-area p {
+                margin-bottom: 1rem;
+            }
+
+            .content-area table {
+                font-size: 14px;
+                overflow-x: auto;
+                display: block;
+            }
+        }
+
+        /* Landscape mobile improvements */
+        @media (max-width: 1024px) and (orientation: landscape) {
+            .sidebar {
+                width: 60%;
+                max-width: 400px;
+            }
+
+            .content-area {
+                margin-left: 0;
             }
         }
 
@@ -500,9 +753,14 @@
     </button>
     
     <div class="main-content">
-        <div class="sidebar">
-            <div class="sidebar-title">
-                <i class="fas fa-list"></i> Table of Contents
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">
+                    <i class="fas fa-list"></i> Table of Contents
+                </div>
+                <button class="sidebar-close" id="sidebar-close" title="Close sidebar">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
             <ul class="toc-list" id="toc-list">
                 <li class="toc-item">
@@ -576,9 +834,14 @@
         const uniqueId = '{{ unique_id }}';
         let currentToken = null;
         const isShared = new URLSearchParams(location.search).get('share') === '1';
+        // Remove the problematic redirect that prevents shared documents from being viewed
+        // if (isShared) {
+        //     try { sessionStorage.setItem('readonlyMode', '1'); } catch (_) {}
+        //     try { window.location.replace('/projects'); } catch (_) { window.location.href = '/projects'; }
+        // }
+        // Instead, just set readonly mode for shared documents
         if (isShared) {
             try { sessionStorage.setItem('readonlyMode', '1'); } catch (_) {}
-            try { window.location.replace('/projects'); } catch (_) { window.location.href = '/projects'; }
         }
         const isForcedReadonly = (()=>{ try { return sessionStorage.getItem('readonlyMode') === '1'; } catch(_) { return false; } })();
         if (isShared || isForcedReadonly) {
@@ -700,270 +963,495 @@
                 }
 
                 // Build TOC from the displayed content to ensure IDs exist and link properly
-                (function buildDisplayedTOC(){
-                    try {
-                        const tocItems = [];
-                        const scope = documentContent;
+                // Wait for content to be fully loaded and rendered before building TOC
+                
+                // Show loading state in TOC while waiting
+                tocList.innerHTML = '<li class="toc-item"><div class="loading"><div class="spinner"></div> Preparing table of contents...</div></li>';
+                
+                function waitForContentReady() {
+                    return new Promise((resolve) => {
+                        let attempts = 0;
+                        const maxAttempts = 100; // Maximum 5 seconds (100 * 50ms)
                         
-                        // More flexible regex patterns for different numbering formats
-                        const numberPatterns = [
-                            /^\s*(\d+(?:\.\d+)*)[).]?\s+(.*)$/,  // 1.1, 1.2, etc.
-                            /^\s*([IVX]+)[).]?\s+(.*)$/i,        // I, II, III, etc.
-                            /^\s*([A-Z])[).]?\s+(.*)$/,          // A, B, C, etc.
-                            /^\s*(\d+)[).]?\s+(.*)$/             // 1, 2, 3, etc.
-                        ];
-                        
-                        // First try to find numbered headings
-                        let list = [];
-                        for (const pattern of numberPatterns) {
-                            const candidates = Array.from(scope.querySelectorAll('h1,h2,h3,h4,h5,h6'))
-                                .filter(el => pattern.test((el.textContent || '').trim()))
-                            .filter(el => (el.textContent || '').trim().length <= 200);
-                            if (candidates.length > 0) {
-                                list = candidates;
-                                break;
+                        // Check if content is ready
+                        const checkContent = () => {
+                            attempts++;
+                            const scope = documentContent;
+                            
+                            // Check if content element exists and has content
+                            if (!scope || !scope.innerHTML || scope.innerHTML.trim() === '') {
+                                if (attempts < maxAttempts) {
+                                    console.log(`Content not ready yet, waiting... (attempt ${attempts}/${maxAttempts})`);
+                                    setTimeout(checkContent, 50);
+                                } else {
+                                    console.warn('Max attempts reached, proceeding with TOC build anyway');
+                                    resolve();
+                                }
+                                return;
                             }
-                        }
+                            
+                            // Check if content has been rendered (has actual DOM elements)
+                            const children = scope.children;
+                            if (children.length === 0) {
+                                if (attempts < maxAttempts) {
+                                    console.log(`Content DOM not rendered yet, waiting... (attempt ${attempts}/${maxAttempts})`);
+                                    setTimeout(checkContent, 50);
+                                } else {
+                                    console.warn('Max attempts reached, proceeding with TOC build anyway');
+                                    resolve();
+                                }
+                                return;
+                            }
+                            
+                            // Check if content is visible (not hidden)
+                            if (scope.style.display === 'none') {
+                                if (attempts < maxAttempts) {
+                                    console.log(`Content not visible yet, waiting... (attempt ${attempts}/${maxAttempts})`);
+                                    setTimeout(checkContent, 50);
+                                } else {
+                                    console.warn('Max attempts reached, proceeding with TOC build anyway');
+                                    resolve();
+                                }
+                                return;
+                            }
+                            
+                            // Check if content has meaningful text content (not just empty elements)
+                            const hasTextContent = Array.from(scope.querySelectorAll('*')).some(el => {
+                                const text = (el.textContent || '').trim();
+                                return text.length > 5; // At least 5 characters of meaningful text
+                            });
+                            
+                            if (!hasTextContent) {
+                                if (attempts < maxAttempts) {
+                                    console.log(`Content has no meaningful text yet, waiting... (attempt ${attempts}/${maxAttempts})`);
+                                    setTimeout(checkContent, 50);
+                                } else {
+                                    console.warn('Max attempts reached, proceeding with TOC build anyway');
+                                    resolve();
+                                }
+                                return;
+                            }
+                            
+                            // Check if any dynamic content is still loading (e.g., from JavaScript)
+                            const loadingElements = scope.querySelectorAll('[data-loading], .loading, [style*="opacity: 0"]');
+                            if (loadingElements.length > 0) {
+                                if (attempts < maxAttempts) {
+                                    console.log(`Dynamic content still loading, waiting... (attempt ${attempts}/${maxAttempts})`);
+                                    setTimeout(checkContent, 50);
+                                } else {
+                                    console.warn('Max attempts reached, proceeding with TOC build anyway');
+                                    resolve();
+                                }
+                                return;
+                            }
+                            
+                            // Additional check: wait for any images or external resources to load
+                            const images = scope.querySelectorAll('img');
+                            if (images.length > 0) {
+                                let loadedImages = 0;
+                                const totalImages = images.length;
+                                
+                                images.forEach(img => {
+                                    if (img.complete) {
+                                        loadedImages++;
+                                    } else {
+                                        img.addEventListener('load', () => {
+                                            loadedImages++;
+                                            if (loadedImages === totalImages) {
+                                                console.log('All images loaded, content ready');
+                                                resolve();
+                                            }
+                                        });
+                                        img.addEventListener('error', () => {
+                                            loadedImages++;
+                                            if (loadedImages === totalImages) {
+                                                console.log('All images processed, content ready');
+                                                resolve();
+                                            }
+                                        });
+                                    }
+                                });
+                                
+                                // If all images are already loaded
+                                if (loadedImages === totalImages) {
+                                    console.log('All images already loaded, content ready');
+                                    resolve();
+                                }
+                                
+                                // Fallback: if images take too long, proceed anyway
+                                setTimeout(() => {
+                                    if (attempts < maxAttempts) {
+                                        console.log('Image loading timeout, proceeding with TOC build');
+                                        resolve();
+                                    }
+                                }, 2000); // 2 second timeout for images
+                            } else {
+                                // No images, content is ready
+                                console.log('No images found, content ready');
+                                resolve();
+                            }
+                        };
                         
-                        // If no numbered headings, try paragraphs and divs with numbers
-                        if (list.length === 0) {
+                        // Use requestAnimationFrame to ensure DOM is fully rendered
+                        const startChecking = () => {
+                            requestAnimationFrame(() => {
+                                // Wait one more frame to ensure everything is rendered
+                                requestAnimationFrame(() => {
+                                    checkContent();
+                                });
+                            });
+                        };
+                        
+                        // Start checking after ensuring DOM is ready
+                        if (document.readyState === 'loading') {
+                            document.addEventListener('DOMContentLoaded', startChecking);
+                        } else {
+                            startChecking();
+                        }
+                    });
+                }
+                
+                // Build TOC after content is fully ready
+                waitForContentReady().then(() => {
+                    console.log('Content is ready, building TOC...');
+                    (function buildDisplayedTOC(){
+                        try {
+                            console.log('Starting TOC build...');
+                            const tocItems = [];
+                            const scope = documentContent;
+                            
+                            console.log('Document content element:', scope);
+                            console.log('Document content HTML length:', scope.innerHTML.length);
+                            console.log('Document content children count:', scope.children.length);
+                            
+                            // More flexible regex patterns for different numbering formats
+                            const numberPatterns = [
+                                /^\s*(\d+(?:\.\d+)*)[).]?\s+(.*)$/,  // 1.1, 1.2, etc.
+                                /^\s*([IVX]+)[).]?\s+(.*)$/i,        // I, II, III, etc.
+                                /^\s*([A-Z])[).]?\s+(.*)$/,          // A, B, C, etc.
+                                /^\s*(\d+)[).]?\s+(.*)$/             // 1, 2, 3, etc.
+                            ];
+                            
+                            // First try to find numbered headings
+                            let list = [];
+                            const headings = scope.querySelectorAll('h1,h2,h3,h4,h5,h6');
+                            console.log('Found headings:', headings.length);
+                            
                             for (const pattern of numberPatterns) {
-                                const candidates = Array.from(scope.querySelectorAll('p,li,div'))
+                                const candidates = Array.from(headings)
                                     .filter(el => pattern.test((el.textContent || '').trim()))
                                     .filter(el => (el.textContent || '').trim().length <= 200);
                                 if (candidates.length > 0) {
                                     list = candidates;
+                                    console.log('Found numbered headings with pattern:', pattern, 'count:', candidates.length);
                                     break;
                                 }
                             }
-                        }
-                        
-                        // Last resort: any headings
-                        if (list.length === 0) {
-                            list = Array.from(scope.querySelectorAll('h1,h2,h3,h4,h5,h6'));
-                        }
-                        
-                        // If still nothing, try any content that might be a section
-                        if (list.length === 0) {
-                            list = Array.from(scope.querySelectorAll('p,div'))
-                                .filter(el => (el.textContent || '').trim().length > 10 && (el.textContent || '').trim().length <= 200);
-                        }
-                        
-                        // Parse and group TOC items
-                        const groupedItems = {};
-                        list.forEach((el, index) => {
-                            const text = (el.textContent || '').trim();
-                            if (!text) return;
                             
-                            if (!el.id) {
-                                let base = slugify(text);
-                                // Ensure ID doesn't start with a digit (problematic for CSS selectors)
-                                if (/^[0-9]/.test(base)) base = `s-${base}`;
-                                let id = base || `section-${index+1}`;
-                                let counter = 2;
-                                while (document.getElementById(id)) { id = `${base}-${counter++}`; }
-                                el.id = id;
-                            }
-                            
-                            // Try to match with any of the number patterns
-                            let match = null;
-                            let patternIndex = -1;
-                            
-                            for (let i = 0; i < numberPatterns.length; i++) {
-                                const testMatch = text.match(numberPatterns[i]);
-                                if (testMatch) {
-                                    match = testMatch;
-                                    patternIndex = i;
-                                    break;
+                            // If no numbered headings, try paragraphs and divs with numbers
+                            if (list.length === 0) {
+                                console.log('No numbered headings found, trying paragraphs and divs...');
+                                for (const pattern of numberPatterns) {
+                                    const candidates = Array.from(scope.querySelectorAll('p,li,div'))
+                                        .filter(el => pattern.test((el.textContent || '').trim()))
+                                        .filter(el => (el.textContent || '').trim().length <= 200);
+                                    if (candidates.length > 0) {
+                                        list = candidates;
+                                        console.log('Found numbered content with pattern:', pattern, 'count:', candidates.length);
+                                        break;
+                                    }
                                 }
                             }
-                            if (match) {
-                                const number = match[1];
-                                const title = match[2];
+                            
+                            // Last resort: any headings
+                            if (list.length === 0) {
+                                console.log('No numbered content found, using all headings...');
+                                list = Array.from(scope.querySelectorAll('h1,h2,h3,h4,h5,h6'));
+                                console.log('All headings count:', list.length);
+                            }
+                            
+                            // If still nothing, try any content that might be a section
+                            if (list.length === 0) {
+                                console.log('No headings found, trying paragraphs and divs as sections...');
+                                list = Array.from(scope.querySelectorAll('p,div'))
+                                    .filter(el => (el.textContent || '').trim().length > 10 && (el.textContent || '').trim().length <= 200);
+                                console.log('Potential section elements count:', list.length);
+                            }
+                            
+                            console.log('Final list for TOC:', list.length, 'items');
+                            
+                            // Parse and group TOC items
+                            const groupedItems = {};
+                            list.forEach((el, index) => {
+                                const text = (el.textContent || '').trim();
+                                if (!text) return;
                                 
-                                // Handle different numbering formats
-                                let mainSection, parts;
-                                if (patternIndex === 0) {
-                                    // Decimal format: 1.1, 1.2, etc.
-                                    parts = number.split('.');
-                                    mainSection = parts[0];
-                                } else if (patternIndex === 1) {
-                                    // Roman numerals: I, II, III, etc.
-                                    parts = [number];
-                                    mainSection = number;
-                                } else if (patternIndex === 2) {
-                                    // Letters: A, B, C, etc.
-                                    parts = [number];
-                                    mainSection = number;
-                                } else {
-                                    // Simple numbers: 1, 2, 3, etc.
-                                    parts = [number];
-                                    mainSection = number;
+                                console.log('Processing element:', el.tagName, 'text:', text.substring(0, 50));
+                                
+                                if (!el.id) {
+                                    let base = slugify(text);
+                                    // Ensure ID doesn't start with a digit (problematic for CSS selectors)
+                                    if (/^[0-9]/.test(base)) base = `s-${base}`;
+                                    let id = base || `section-${index+1}`;
+                                    let counter = 2;
+                                    while (document.getElementById(id)) { id = `${base}-${counter++}`; }
+                                    el.id = id;
+                                    console.log('Generated ID:', id, 'for text:', text.substring(0, 30));
                                 }
                                 
-                                if (!groupedItems[mainSection]) {
-                                    // Try to find a better title for the main section
-                                    let sectionTitle = `Section ${mainSection}`;
-                                    const mainSectionEl = list.find(el => {
-                                        const text = el.textContent.trim();
-                                        for (const pattern of numberPatterns) {
-                                            const testMatch = text.match(pattern);
-                                            if (testMatch && testMatch[1] === mainSection) {
-                                                // Check if it's a main section (single level)
-                                                if (patternIndex === 0) {
-                                                    return testMatch[1].split('.').length === 1;
-                                                } else {
-                                                    return true; // Roman, letter, or simple number
+                                // Try to match with any of the number patterns
+                                let match = null;
+                                let patternIndex = -1;
+                                
+                                for (let i = 0; i < numberPatterns.length; i++) {
+                                    const testMatch = text.match(numberPatterns[i]);
+                                    if (testMatch) {
+                                        match = testMatch;
+                                        patternIndex = i;
+                                        break;
+                                    }
+                                }
+                                if (match) {
+                                    const number = match[1];
+                                    const title = match[2];
+                                    
+                                    // Handle different numbering formats
+                                    let mainSection, parts;
+                                    if (patternIndex === 0) {
+                                        // Decimal format: 1.1, 1.2, etc.
+                                        parts = number.split('.');
+                                        mainSection = parts[0];
+                                    } else if (patternIndex === 1) {
+                                        // Roman numerals: I, II, III, etc.
+                                        parts = [number];
+                                        mainSection = number;
+                                    } else if (patternIndex === 2) {
+                                        // Letters: A, B, C, etc.
+                                        parts = [number];
+                                        mainSection = number;
+                                    } else {
+                                        // Simple numbers: 1, 2, 3, etc.
+                                        parts = [number];
+                                        mainSection = number;
+                                    }
+                                    
+                                    if (!groupedItems[mainSection]) {
+                                        // Try to find a better title for the main section
+                                        let sectionTitle = `Section ${mainSection}`;
+                                        const mainSectionEl = list.find(el => {
+                                            const text = el.textContent.trim();
+                                            for (const pattern of numberPatterns) {
+                                                const testMatch = text.match(pattern);
+                                                if (testMatch && testMatch[1] === mainSection) {
+                                                    // Check if it's a main section (single level)
+                                                    if (patternIndex === 0) {
+                                                        return testMatch[1].split('.').length === 1;
+                                                    } else {
+                                                        return true; // Roman, letter, or simple number
+                                                    }
+                                                }
+                                            }
+                                            return false;
+                                        });
+                                        if (mainSectionEl) {
+                                            const text = mainSectionEl.textContent.trim();
+                                            for (const pattern of numberPatterns) {
+                                                const testMatch = text.match(pattern);
+                                                if (testMatch && testMatch[1] === mainSection) {
+                                                    sectionTitle = testMatch[2];
+                                                    break;
                                                 }
                                             }
                                         }
-                                        return false;
+                                        groupedItems[mainSection] = {
+                                            title: sectionTitle,
+                                            items: []
+                                        };
+                                    }
+                                    
+                                    groupedItems[mainSection].items.push({
+                                        href: `#${el.id}`,
+                                        text: title,
+                                        number: number,
+                                        level: parts.length
                                     });
-                                    if (mainSectionEl) {
-                                        const text = mainSectionEl.textContent.trim();
-                                        for (const pattern of numberPatterns) {
-                                            const testMatch = text.match(pattern);
-                                            if (testMatch && testMatch[1] === mainSection) {
-                                                sectionTitle = testMatch[2];
-                                                break;
-                                            }
-                                        }
+                                } else {
+                                    // Fallback for items without clear numbering
+                                    if (!groupedItems['other']) {
+                                        groupedItems['other'] = {
+                                            title: 'Other Sections',
+                                            items: []
+                                        };
                                     }
-                                    groupedItems[mainSection] = {
-                                        title: sectionTitle,
-                                        items: []
-                                    };
+                                    groupedItems['other'].items.push({
+                                        href: `#${el.id}`,
+                                        text: text,
+                                        number: '',
+                                        level: 1
+                                    });
                                 }
-                                
-                                groupedItems[mainSection].items.push({
-                                    href: `#${el.id}`,
-                                    text: title,
-                                    number: number,
-                                    level: parts.length
-                                });
-                            } else {
-                                // Fallback for items without clear numbering
-                                if (!groupedItems['other']) {
-                                    groupedItems['other'] = {
-                                        title: 'Other Sections',
-                                        items: []
-                                    };
-                                }
-                                groupedItems['other'].items.push({
-                                    href: `#${el.id}`,
-                                    text: text,
-                                    number: '',
-                                    level: 1
-                                });
-                            }
-                        });
-                        
-                        tocList.innerHTML = '';
-                        if (Object.keys(groupedItems).length === 0) {
-                            tocList.innerHTML = '<li class="toc-item" style="color:#6c757d;">No sections found</li>';
-                            return;
-                        }
-                        
-                        // Build grouped TOC HTML
-                        Object.keys(groupedItems).sort((a, b) => {
-                            if (a === 'other') return 1;
-                            if (b === 'other') return -1;
-                            return parseInt(a) - parseInt(b);
-                        }).forEach(sectionKey => {
-                            const section = groupedItems[sectionKey];
+                            });
                             
-                            if (section.items.length === 1 && section.items[0].level === 1) {
-                                // Single main section item
-                            const li = document.createElement('li');
-                            li.className = 'toc-item';
-                                li.innerHTML = `<a href="${section.items[0].href}" class="toc-link" data-target="${section.items[0].href}">${section.items[0].text}</a>`;
-                            tocList.appendChild(li);
-                            } else {
-                                // Grouped section with expandable content
-                                const groupLi = document.createElement('li');
-                                groupLi.className = 'toc-group';
+                            console.log('Grouped items:', groupedItems);
+                            console.log('Grouped items keys:', Object.keys(groupedItems));
+                            
+                            tocList.innerHTML = '';
+                            if (Object.keys(groupedItems).length === 0) {
+                                console.log('No grouped items found, showing "No sections found" message');
+                                // Fallback: show basic content structure
+                                const fallbackItems = [];
+                                const allElements = scope.querySelectorAll('p, div, h1, h2, h3, h4, h5, h6, li');
                                 
-                                const groupHeader = document.createElement('div');
-                                groupHeader.className = 'toc-group-header';
-                                groupHeader.innerHTML = `
-                                    <span>${section.title}</span>
-                                    <button class="toc-group-toggle" type="button">
-                                        <i class="fas fa-chevron-right"></i>
-                                    </button>
-                                `;
-                                
-                                const groupContent = document.createElement('div');
-                                groupContent.className = 'toc-group-content';
-                                
-                                // Sort items by their numbering
-                                section.items.sort((a, b) => {
-                                    if (!a.number || !b.number) return 0;
-                                    const aParts = a.number.split('.').map(Number);
-                                    const bParts = b.number.split('.').map(Number);
-                                    for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
-                                        const aVal = aParts[i] || 0;
-                                        const bVal = bParts[i] || 0;
-                                        if (aVal !== bVal) return aVal - bVal;
+                                allElements.forEach((el, index) => {
+                                    const text = (el.textContent || '').trim();
+                                    if (text && text.length > 5 && text.length < 200) {
+                                        if (!el.id) {
+                                            let base = slugify(text);
+                                            if (/^[0-9]/.test(base)) base = `s-${base}`;
+                                            let id = base || `content-${index+1}`;
+                                            let counter = 2;
+                                            while (document.getElementById(id)) { id = `${base}-${counter++}`; }
+                                            el.id = id;
+                                        }
+                                        
+                                        fallbackItems.push({
+                                            href: `#${el.id}`,
+                                            text: text.length > 50 ? text.substring(0, 50) + '...' : text,
+                                            tag: el.tagName.toLowerCase()
+                                        });
                                     }
-                                    return 0;
                                 });
                                 
-                                section.items.forEach(item => {
-                                    const itemLi = document.createElement('li');
-                                    itemLi.className = 'toc-item';
-                                    itemLi.innerHTML = `<a href="${item.href}" class="toc-link" data-target="${item.href}">${item.number ? item.number + ' ' : ''}${item.text}</a>`;
-                                    groupContent.appendChild(itemLi);
-                                });
+                                if (fallbackItems.length > 0) {
+                                    console.log('Showing fallback TOC with', fallbackItems.length, 'items');
+                                    const fallbackLi = document.createElement('li');
+                                    fallbackLi.className = 'toc-item';
+                                    fallbackLi.innerHTML = '<div style="color:#6c757d; font-weight:600; margin-bottom:10px;">Document Content</div>';
+                                    tocList.appendChild(fallbackLi);
+                                    
+                                    fallbackItems.forEach(item => {
+                                        const itemLi = document.createElement('li');
+                                        itemLi.className = 'toc-item';
+                                        itemLi.innerHTML = `<a href="${item.href}" class="toc-link" data-target="${item.href}"><span style="color:#6c757d; font-size:0.8em;">[${item.tag}]</span> ${item.text}</a>`;
+                                        tocList.appendChild(itemLi);
+                                    });
+                                } else {
+                                    tocList.innerHTML = '<li class="toc-item" style="color:#6c757d;">No sections found</li>';
+                                }
+                                return;
+                            }
+                            
+                            // Build grouped TOC HTML
+                            Object.keys(groupedItems).sort((a, b) => {
+                                if (a === 'other') return 1;
+                                if (b === 'other') return -1;
+                                return parseInt(a) - parseInt(b);
+                            }).forEach(sectionKey => {
+                                const section = groupedItems[sectionKey];
+                                console.log('Building TOC for section:', sectionKey, 'with', section.items.length, 'items');
                                 
-                                groupLi.appendChild(groupHeader);
-                                groupLi.appendChild(groupContent);
-                                tocList.appendChild(groupLi);
-                                
-                                // Add click handler for group header
-                                groupHeader.addEventListener('click', () => {
-                                    const isExpanded = groupHeader.classList.contains('expanded');
-                                    if (isExpanded) {
-                                        groupHeader.classList.remove('expanded');
-                                        groupHeader.querySelector('.toc-group-toggle').classList.remove('expanded');
-                                        groupContent.classList.remove('expanded');
-                                    } else {
+                                if (section.items.length === 1 && section.items[0].level === 1) {
+                                    // Single main section item
+                                    const li = document.createElement('li');
+                                    li.className = 'toc-item';
+                                    li.innerHTML = `<a href="${section.items[0].href}" class="toc-link" data-target="${section.items[0].href}">${section.items[0].text}</a>`;
+                                    tocList.appendChild(li);
+                                    console.log('Added single item TOC entry for:', section.items[0].text);
+                                } else {
+                                    // Grouped section with expandable content
+                                    const groupLi = document.createElement('li');
+                                    groupLi.className = 'toc-group';
+                                    
+                                    const groupHeader = document.createElement('div');
+                                    groupHeader.className = 'toc-group-header';
+                                    groupHeader.innerHTML = `
+                                        <span>${section.title}</span>
+                                        <button class="toc-group-toggle" type="button">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </button>
+                                    `;
+                                    
+                                    const groupContent = document.createElement('div');
+                                    groupContent.className = 'toc-group-content';
+                                    
+                                    // Sort items by their numbering
+                                    section.items.sort((a, b) => {
+                                        if (!a.number || !b.number) return 0;
+                                        const aParts = a.number.split('.').map(Number);
+                                        const bParts = b.number.split('.').map(Number);
+                                        for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+                                            const aVal = aParts[i] || 0;
+                                            const bVal = bParts[i] || 0;
+                                            if (aVal !== bVal) return aVal - bVal;
+                                        }
+                                        return 0;
+                                    });
+                                    
+                                    section.items.forEach(item => {
+                                        const itemLi = document.createElement('li');
+                                        itemLi.className = 'toc-item';
+                                        itemLi.innerHTML = `<a href="${item.href}" class="toc-link" data-target="${item.href}">${item.number ? item.number + ' ' : ''}${item.text}</a>`;
+                                        groupContent.appendChild(itemLi);
+                                        console.log('Added grouped TOC item:', item.text, 'with href:', item.href);
+                                    });
+                                    
+                                    groupLi.appendChild(groupHeader);
+                                    groupLi.appendChild(groupContent);
+                                    tocList.appendChild(groupLi);
+                                    console.log('Added grouped TOC section:', section.title);
+                                    
+                                    // Add click handler for group header
+                                    groupHeader.addEventListener('click', () => {
+                                        const isExpanded = groupHeader.classList.contains('expanded');
+                                        if (isExpanded) {
+                                            groupHeader.classList.remove('expanded');
+                                            groupHeader.querySelector('.toc-group-toggle').classList.remove('expanded');
+                                            groupContent.classList.remove('expanded');
+                                        } else {
+                                            groupHeader.classList.add('expanded');
+                                            groupHeader.querySelector('.toc-group-toggle').classList.add('expanded');
+                                            groupContent.classList.add('expanded');
+                                        }
+                                    });
+                                    
+                                    // Expand the first section by default
+                                    if (index === 0) {
                                         groupHeader.classList.add('expanded');
                                         groupHeader.querySelector('.toc-group-toggle').classList.add('expanded');
                                         groupContent.classList.add('expanded');
                                     }
-                                });
-                                
-                                // Expand the first section by default
-                                if (index === 0) {
-                                    groupHeader.classList.add('expanded');
-                                    groupHeader.querySelector('.toc-group-toggle').classList.add('expanded');
-                                    groupContent.classList.add('expanded');
-                                }
-                            }
-                        });
-                        
-                        // Smooth scrolling within content
-                        tocList.querySelectorAll('.toc-link').forEach(link => {
-                            link.addEventListener('click', (e) => {
-                                e.preventDefault();
-                                const selector = link.getAttribute('data-target') || '';
-                                const id = selector.startsWith('#') ? selector.slice(1) : selector;
-                                const target = document.getElementById(id);
-                                if (target) {
-                                    const header = document.querySelector('.header');
-                                    const headerH = header ? header.offsetHeight : 0;
-                                    const y = window.scrollY + target.getBoundingClientRect().top - headerH - 10;
-                                    window.scrollTo({ top: y, behavior: 'smooth' });
-                                    try { history.replaceState(null, '', `#${id}`); } catch (_) {}
                                 }
                             });
-                        });
-                    } catch (err) {
-                        tocList.innerHTML = '<li class="toc-item" style="color:#dc3545;">Failed to build table of contents</li>';
-                        // Optionally log error
-                        console.warn('TOC build error', err);
-                    }
-                })();
+                            
+                            console.log('TOC building completed. Final TOC HTML length:', tocList.innerHTML.length);
+                            
+                            // Smooth scrolling within content
+                            tocList.querySelectorAll('.toc-link').forEach(link => {
+                                link.addEventListener('click', (e) => {
+                                    e.preventDefault();
+                                    const selector = link.getAttribute('data-target') || '';
+                                    const id = selector.startsWith('#') ? selector.slice(1) : selector;
+                                    const target = document.getElementById(id);
+                                    if (target) {
+                                        const header = document.querySelector('.header');
+                                        const headerH = header ? header.offsetHeight : 0;
+                                        const y = window.scrollY + target.getBoundingClientRect().top - headerH - 10;
+                                        window.scrollTo({ top: y, behavior: 'smooth' });
+                                        try { history.replaceState(null, '', `#${id}`); } catch (_) {}
+                                    }
+                                });
+                            });
+                        } catch (err) {
+                            console.error('TOC build error:', err);
+                            tocList.innerHTML = '<li class="toc-item" style="color:#dc3545;">Failed to build table of contents</li>';
+                            // Optionally log error
+                            console.warn('TOC build error', err);
+                        }
+                    })();
+                }).catch(error => {
+                    console.error('Error waiting for content to be ready:', error);
+                    tocList.innerHTML = '<li class="toc-item" style="color:#dc3545;">Failed to load content for TOC</li>';
+                });
 
                 // If URL already has a hash, scroll to it with offset once content is ready
                 if (location.hash) {
@@ -1155,10 +1643,11 @@
         // --- Sidebar Toggle Functionality ---
         (function() {
             const sidebarToggle = document.getElementById('sidebar-toggle');
-            const sidebar = document.querySelector('.sidebar');
+            const sidebar = document.getElementById('sidebar'); // Changed to getElementById
             const mainContent = document.querySelector('.main-content');
+            const sidebarCloseBtn = document.getElementById('sidebar-close'); // New close button
             
-            if (!sidebarToggle || !sidebar || !mainContent) return;
+            if (!sidebarToggle || !sidebar || !mainContent || !sidebarCloseBtn) return;
             
             // Check if sidebar was previously collapsed
             const wasCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
@@ -1166,6 +1655,7 @@
                 sidebar.classList.add('collapsed');
                 mainContent.classList.add('sidebar-collapsed');
                 sidebarToggle.classList.add('collapsed');
+                sidebarCloseBtn.style.display = 'block'; // Show close button when collapsed
             }
             
             sidebarToggle.addEventListener('click', () => {
@@ -1176,14 +1666,24 @@
                     sidebar.classList.remove('collapsed');
                     mainContent.classList.remove('sidebar-collapsed');
                     sidebarToggle.classList.remove('collapsed');
+                    sidebarCloseBtn.style.display = 'none'; // Hide close button when expanded
                     localStorage.setItem('sidebar-collapsed', 'false');
                 } else {
                     // Collapse sidebar
                     sidebar.classList.add('collapsed');
                     mainContent.classList.add('sidebar-collapsed');
                     sidebarToggle.classList.add('collapsed');
+                    sidebarCloseBtn.style.display = 'block'; // Show close button when collapsed
                     localStorage.setItem('sidebar-collapsed', 'true');
                 }
+            });
+
+            sidebarCloseBtn.addEventListener('click', () => {
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('sidebar-collapsed');
+                sidebarToggle.classList.add('collapsed');
+                sidebarCloseBtn.style.display = 'block';
+                localStorage.setItem('sidebar-collapsed', 'true');
             });
             
             // Keyboard shortcut: Ctrl/Cmd + B to toggle sidebar
@@ -1191,6 +1691,59 @@
                 if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
                     e.preventDefault();
                     sidebarToggle.click();
+                }
+            });
+
+            // Mobile-specific improvements
+            const isMobile = window.innerWidth <= 1024;
+            
+            if (isMobile) {
+                // On mobile, start with sidebar collapsed
+                if (!wasCollapsed) {
+                    sidebar.classList.add('collapsed');
+                    mainContent.classList.add('sidebar-collapsed');
+                    sidebarToggle.classList.add('collapsed');
+                    sidebarCloseBtn.style.display = 'block';
+                    localStorage.setItem('sidebar-collapsed', 'true');
+                }
+
+                // Close sidebar when clicking on content area on mobile
+                mainContent.addEventListener('click', () => {
+                    if (!sidebar.classList.contains('collapsed')) {
+                        sidebar.classList.add('collapsed');
+                        mainContent.classList.add('sidebar-collapsed');
+                        sidebarToggle.classList.add('collapsed');
+                        sidebarCloseBtn.style.display = 'block';
+                        localStorage.setItem('sidebar-collapsed', 'true');
+                    }
+                });
+
+                // Prevent content clicks from closing sidebar when clicking on sidebar itself
+                sidebar.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                });
+            }
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                const newIsMobile = window.innerWidth <= 1024;
+                
+                if (newIsMobile && !isMobile) {
+                    // Switched to mobile - ensure sidebar is collapsed
+                    sidebar.classList.add('collapsed');
+                    mainContent.classList.add('sidebar-collapsed');
+                    sidebarToggle.classList.add('collapsed');
+                    sidebarCloseBtn.style.display = 'block';
+                    localStorage.setItem('sidebar-collapsed', 'true');
+                } else if (!newIsMobile && isMobile) {
+                    // Switched to desktop - restore previous state
+                    const wasCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+                    if (!wasCollapsed) {
+                        sidebar.classList.remove('collapsed');
+                        mainContent.classList.remove('sidebar-collapsed');
+                        sidebarToggle.classList.remove('collapsed');
+                        sidebarCloseBtn.style.display = 'none';
+                    }
                 }
             });
         })();
